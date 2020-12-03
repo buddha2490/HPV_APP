@@ -2,6 +2,9 @@
 
 # Database initialization -------------------------------------------------
 
+# This will create the initial database for a new user
+# Only runs the first time they log in
+# Includes the monthly update dashboard data to save
 firstDB <- function(loc, filename, username){
   
   lst <- list()
@@ -447,6 +450,11 @@ firstDB <- function(loc, filename, username){
   
 }
 
+# This is to generate a hard stop
+# If the user does not input any rate information, we don't want them to submit the data
+# This nullDB just creates an empty dataset
+# Whatever they submit will be compared to the empty version and if they match, an error will come up
+# It isn't fancy, but I was feeling lazy
 nullDB <-  function(){
   lst <- list()
 
@@ -769,16 +777,36 @@ lapply(names(lst), function(x) {
 
 
 # Storage functions -------------------------------------------------------
+
+# Storing data using shinyapps.io is a pain in the ass.
+# shinyapps.io will not hold any permanent data files, so I have to store it on Azure
+# Ideally we could use a single database file to store everything
+# Ideally we would set up a MySQL server on Azure to remote connect between shinyapps.io
+# But that is overkill for such a tiny project
+#  Thus, every user (n ~ 100) will get a separate SQLite file stored on Azure
+#  This file will be downloaded from Azure, updated and saved, then sent BACK to Azure
+#  This is stupid inefficient
+#  But, it is also idiot-proof safe.  Even if data gets lost, the most recently saved version
+#  Is safe on Azure.
+# We can't remote connect to SQLite files (must be read locally, just like RDS/Rdata, etc)
+# So this was the best way to do it
+# But it really sucks, nonetheless - it will be better when we have a local R server
+
+
 # Save a data frame to azure
 
 # dat = data name in the environment
 # filename = name the file.RDS
 # AzureDir = container/fileshare directory in Azure
+
+# Save Azure -  It will save the local version of the file to Azure, then delete the local version so there is
+# never more than one version of the database floating around
 saveAzure <- function(loc, filename) {
   storage_upload(loc, filename)
   file.remove(filename)
 }
 
+#  To update a section of the database, I need to download the file, write the new table, and then save it back to azure
 updateDB <- function(loc, filename, table, df){
   storage_download(loc, filename, overwrite = T)
   conn <- dbConnect(RSQLite::SQLite(), filename)
@@ -786,7 +814,10 @@ updateDB <- function(loc, filename, table, df){
   saveAzure(loc, filename)
 }
 
-
+# I have continuous updates in each of the databases in case our PIs want to go through earlier responses to check for
+# Errors.
+# But when I want to pull the data, I only want the most recent version
+# Each version has a timestamp, this will just pull the latest time stamp
 getRecentData <- function(loc, filename, table) {
   storage_download(loc, filename, overwrite = T)
   conn <- dbConnect(RSQLite::SQLite(), filename)
@@ -797,6 +828,7 @@ getRecentData <- function(loc, filename, table) {
   dbDisconnect(conn)
 }
 
+# This downloads the most recent data for each of the subsections and compiles them into a single dataset
 getAllData <- function(loc, filename){
   storage_download(loc, filename, overwrite=T)
   conn <- dbConnect(RSQLite::SQLite(), filename)
@@ -812,7 +844,9 @@ getAllData <- function(loc, filename){
   return(foo)
 }
 
-
+# This pulls together the most recent versions of the baseline data
+# This function is redundant, I should have just used getAllData()
+# But they were written at different times and I'm too lazy to change the whole app
 getBaselineData <- function(loc, filename){
   storage_download(loc, filename, overwrite=T)
 conn <- dbConnect(RSQLite::SQLite(), filename)
@@ -828,8 +862,9 @@ foo <- lapply(tables, function(x) {
 return(foo)
 }
 
-
-
+# This pulls together the most recent versions of the followup data
+# This function is redundant, I should have just used getAllData()
+# But they were written at different times and I'm too lazy to change the whole app
 getFollowupData <- function(loc, filename){
   storage_download(loc, filename, overwrite=T)
   conn <- dbConnect(RSQLite::SQLite(), filename)
@@ -845,6 +880,47 @@ getFollowupData <- function(loc, filename){
   return(foo)
 }
 
+# This will compile all the study data for all health systems
+# I'm a little ambivalent about including this, but they want people to be able to compare themselves to others
+# I'll use this function in the monitoring apps... but I suppose I can do it here too.
+# Like the other functions, it goes through each SQLite database and pulls the most recent
+# entry
+allStudyData <- function(loc) {
+  
+  files <- list_azure_files(loc) %>%
+    filter(isdir == "FALSE") %>%
+    filter(name != ".DB")
+  
+  mclapply(files$name, function(x) {
+    storage_download(loc, x, overwrite = T)
+  }, mc.cores = getOption("mc.cores", detectCores()))
+  
+  # Merge the data
+  tbls <- c("demographics", "systems", "savedRates", "savedActivities", "followupRates", "additionalInfo")
+  myData <- mclapply(files$name, function(x) {
+    conn <- dbConnect(SQLite(), x) # connect to the database
+    foo <- lapply(tbls, function(y) {
+      df <- dbReadTable(conn, y) # read the table
+      dateVar <- names(df)[2]
+      # Get the most recent version
+      df <- df[order(df[[dateVar]], decreasing = T),]
+      df[[dateVar]] <- as.POSIXct(df[[dateVar]], origin = "1970-01-01")
+      return(df[1,])
+    }) %>%
+      Reduce(function(x,y) full_join(x,y,"Username"), .)
+  }, mc.cores = getOption("mc.cores", detectCores())) %>% 
+    do.call("rbind",.)
+  
+  # Clean up shinyapps.io
+  lapply(files$name, file.remove)
+  rm(tbls)
+  
+  return(myData)
+}
+
+
+
+# Figures -----------------------------------------------------------------
 
 
 # Notes on Figures - this is inefficient
@@ -853,7 +929,6 @@ getFollowupData <- function(loc, filename){
 # FUDisplay4 is the same as figure2 - only followup vs baseline
 
 
-# Functions ---------------------------------------------------------------
 
 
 # Sum boys and girls rates to get total:
@@ -920,6 +995,8 @@ baselineRates$BothAge3_tdap <- with(baselineRates,
 return(baselineRates)
 }
 
+
+
 sumFURates <- function(rates) {
   
   rates$flagAge1 <- with(rates, ifelse(
@@ -984,9 +1061,9 @@ sumFURates <- function(rates) {
 
 
 
-
 # Figures -----------------------------------------------------------------
 
+# This will pull the legend for grid.arrange() figures
 getLegend <- function(myggplot) {
   tmp <- ggplot_gtable(ggplot_build(myggplot))
   leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
@@ -997,7 +1074,9 @@ getLegend <- function(myggplot) {
 
 
 
-# Figure 1 - I need calculate rates for dose1 and dose2 - include all ages
+# Baseline dashboard figures ----------------------------------------------
+
+# Figure 1 - calculate rates for dose 1 and dose 2 - all ages 
 #  Bar chart for girls, boys, combined
 figure1 <- function(dat) {
   
@@ -1053,10 +1132,21 @@ figure1 <- function(dat) {
   rates$Gender <- factor(rates$Gender, levels = c("Females", "Males", "Combined"))
   rates$Dose <- c(rep("1+ Dose HPV", 3), rep("HPV Complete", 3))
   rates$Dose <- factor(rates$Dose, levels = c("1+ Dose HPV", "HPV Complete"))
+  
+  # Dec 1st 2020 - they want the rates included as text on the figure
+  # Need to format the rates first
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+
+
   g <- ggplot(rates, aes(x = Dose,
                          y = rates,
                          fill = Gender)) +
     geom_col(width = 0.5, position = position_dodge(0.7))  +
+    geom_text(aes(label=rates_string), vjust=-0.5, size=3,
+              position = position_dodge(0.7)) +
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
@@ -1072,37 +1162,56 @@ figure1 <- function(dat) {
 }
 
 
-# Figure 2 - sex-specific rates of each outcome - age3 only
-
 # Figure 2 - Age 13 ONLY male/female/combined rates for:
 #   1+ doses
 #   2 doses
 #   Meningicoccal
 #   Tdap
-figure2 <- function(dat){
+
+# December 1st 2020 - They also want age 11-12
+# Let's see if I can roll the whole thing in one function
+
+# age= age2 (11-12) or age3 (age 13)
+figure2 <- function(dat, age){
 
   dat <- sumBaselineRates(dat)
   
+  newNumbers <- c("Fem_total", "Fem_dose1", "Fem_dose2", "Fem_mening", "Fem_tdap",
+                  "Men_total", "Men_dose1", "Men_dose2", "Men_mening", "Men_tdap",
+                  "Both_total", "Both_dose1", "Both_dose2", "Both_mening", "Both_tdap")
+  
+  age2 <- c("FemAge2_total", "FemAge2_dose1", "FemAge2_dose2", "FemAge2_mening", "FemAge2_tdap",
+            "MenAge2_total", "MenAge2_dose1", "MenAge2_dose2", "MenAge2_mening", "MenAge2_tdap",
+            "BothAge2_total", "BothAge2_dose1", "BothAge2_dose2", "BothAge2_mening", "BothAge2_tdap")
+  
+  age3 <- c("FemAge3_total", "FemAge3_dose1", "FemAge3_dose2", "FemAge3_mening", "FemAge3_tdap",
+            "MenAge3_total", "MenAge3_dose1", "MenAge3_dose2", "MenAge3_mening", "MenAge3_tdap",
+            "BothAge3_total", "BothAge3_dose1", "BothAge3_dose2", "BothAge3_mening", "BothAge3_tdap")
+  
+  if (age == "age2") dat[,newNumbers] <- dat[,age2]
+  if (age == "age3") dat[,newNumbers] <- dat[,age3]
+  
+  
   # girls 
-  totalFem <- with(dat, sum(FemAge3_total,na.rm=T))
-  dose1Fem <- with(dat, sum(FemAge3_dose1,na.rm=T))
-  dose2Fem <- with(dat, sum(FemAge3_dose2,na.rm=T))
-  meningFem <- with(dat, sum(FemAge3_mening,na.rm=T))
-  tdapFem <-   with(dat, sum(FemAge3_tdap,na.rm=T))
+  totalFem <- with(dat, sum(Fem_total,na.rm=T))
+  dose1Fem <- with(dat, sum(Fem_dose1,na.rm=T))
+  dose2Fem <- with(dat, sum(Fem_dose2,na.rm=T))
+  meningFem <- with(dat, sum(Fem_mening,na.rm=T))
+  tdapFem <-   with(dat, sum(Fem_tdap,na.rm=T))
   
   # boys
-  totalMen <- with(dat, sum(MenAge3_total,na.rm=T))
-  dose1Men <- with(dat, sum(MenAge3_dose1,na.rm=T))
-  dose2Men <- with(dat, sum(MenAge3_dose2,na.rm=T))
-  meningMen <- with(dat,sum(MenAge3_mening,na.rm=T))
-  tdapMen <- with(dat, sum(MenAge3_tdap,na.rm=T))
+  totalMen <- with(dat, sum(Men_total,na.rm=T))
+  dose1Men <- with(dat, sum(Men_dose1,na.rm=T))
+  dose2Men <- with(dat, sum(Men_dose2,na.rm=T))
+  meningMen <- with(dat,sum(Men_mening,na.rm=T))
+  tdapMen <- with(dat, sum(Men_tdap,na.rm=T))
   
   
-  totalBoth <- with(dat, sum(BothAge3_total,na.rm=T))
-  dose1Both <- with(dat, sum(BothAge3_dose1,na.rm=T))
-  dose2Both <- with(dat, sum(BothAge3_dose2,na.rm=T))
-  meningBoth <- with(dat, sum(BothAge3_mening,na.rm=T))
-  tdapBoth <- with(dat, sum(BothAge3_tdap,na.rm=T))
+  totalBoth <- with(dat, sum(Both_total,na.rm=T))
+  dose1Both <- with(dat, sum(Both_dose1,na.rm=T))
+  dose2Both <- with(dat, sum(Both_dose2,na.rm=T))
+  meningBoth <- with(dat, sum(Both_mening,na.rm=T))
+  tdapBoth <- with(dat, sum(Both_tdap,na.rm=T))
   
   rates1Fem <- dose1Fem / totalFem
   rates2Fem <- dose2Fem / totalFem
@@ -1136,16 +1245,27 @@ figure2 <- function(dat){
                        levels = c("1+ Dose HPV",
                                   "HPV Complete",
                                   "Mening",
-                                  "Tdap") )               
+                                  "Tdap") )       
+  
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+
+  
+  title <- ifelse(age == "age2", "Baseline HPV Vaccination Rates by Sex (Ages 11-12)",
+                                "Baseline HPV Vaccination Rates by Sex (Age 13)")
   
   g <- ggplot(rates, aes(x = Gender,
                          y = rates,
                          fill = Dose)) +
     geom_col(width = 0.5, position = position_dodge(0.7))  +
+    geom_text(aes(label=rates_string), vjust=-0.5, size=3,
+              position = position_dodge(0.7)) +
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
-    labs(title = "Baseline HPV Vaccination Rates by Sex (Age 13)",
+    labs(title = title,
          subtitle = dat[["healthSystem"]]) +
     theme(legend.position = "bottom",
           legend.title = element_blank(),
@@ -1154,7 +1274,6 @@ figure2 <- function(dat){
           plot.subtitle = element_text(hjust = 0.5))
   rm(rates)
   return(g)
-  
 }
 
 
@@ -1243,12 +1362,20 @@ figure3 <- function(dat){
   rates$Age <- factor(rates$Age,
                       levels = c("Age 9-10", "Age 11-12", "Age 13"))
   
-  
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+ 
+    
+    
   figures <- lapply(c("Females", "Males", "Combined"), function(x) {
     ggplot(filter(rates, Gender == x), aes(x = Dose,
                                            y = rates,
                                            fill = Age)) +
       geom_col(width = 0.5, position = position_dodge(0.7))  +
+      geom_text(aes(label=rates_string), vjust=-0.5, size=2,
+                position = position_dodge(0.7)) +
       scale_y_continuous(limits = seq(0,1),
                          breaks = seq(0,1,0.2),
                          labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
@@ -1267,17 +1394,199 @@ figure3 <- function(dat){
   }
   
   
-  grid.arrange(figures[[1]] + theme(legend.position = "none") + labs(title = "Females"),
-               figures[[2]] + theme(legend.position = "none") + labs(title = "Males"),
-               figures[[3]] + labs(title = "Males and Females Combined"),
-               nrow = 2,
-               layout_matrix= rbind(c(1,2),
-                                    c(3,3)),
-               top = paste("Baseline HPV Vaccination Rates by Sex and Age Group",
-                           dat[["HealthSystem"]],
-                           sep = "\n"))
+  # December 1st 2020 - They want to drop the males and females seperately
+  #  I don't want to change the code, so I'm just going to grid.arrage only one graph
+  #  It'll be easy to change back if they want it.
+  
+  plot(figures[[3]]) + labs (title = paste("Baseline HPV Vaccination Rates by Sex and Age Group",
+                                           dat[["HealthSystem"]],
+                                           sep = "\n"),
+                            subtitle = "Males and Females Combined")
+  
+  
+  #  Males, Females, Combined - old graph
+  # grid.arrange(figures[[1]] + theme(legend.position = "none") + labs(title = "Females"),
+  #              figures[[2]] + theme(legend.position = "none") + labs(title = "Males"),
+  #              figures[[3]] + labs(title = "Males and Females Combined"),
+  #              nrow = 2,
+  #              layout_matrix= rbind(c(1,2),
+  #                                   c(3,3)),
+  #              top = paste("Baseline HPV Vaccination Rates by Sex and Age Group",
+  #                          dat[["HealthSystem"]],
+  #                          sep = "\n"))
 }
 
+
+# Figure 4 - compare the users HPV results to the rest of the study
+figure4 <- function(dat=df, 
+                    myData=allData,
+                    region = "All regions combined",
+                    system = "All system types") {
+  
+  
+  
+  # Set my titles based on region and system
+  title1 <- df[["HealthSystem"]]
+  title2 <- ifelse(region == "All regions combined" & system == "All system types",
+                   "All regions and health system types combined", ifelse(
+                     region == "All regions combined" & system != "All system types", 
+                     paste(system, "systems across all regions combined"), ifelse(
+                     region != "All regions combined" & system == "All system types",
+                     paste("All system types combined for the",region, "region"), 
+                     paste(system, "systems within the", region, "region"))))  
+
+  
+  west <- c("AK","OR","WA","NV","CA","HI","GU")
+  north <- c("ID","MT","WY","UT","CO","ND","SD","NE","KS","MN","IA","MO","WI")
+  south <- c("AZ","NM","TX","OK","AR","LA","MS","AL")
+  northCentral <- c("MI","IL","IN","OH","KY","WV","TN")
+  southEast <- c("PR","FL","GA","SC","NC","VA")
+  northEast <- c("DC","MD","DE","NJ","PA","NY","RI","CT","MA","NH","VT","ME")
+  
+
+  
+  myData$Region <- with(myData, ifelse(
+        Q4b %in% west, "West", ifelse(
+          Q4b %in% north, "North", ifelse(
+            Q4b %in% south, "South", ifelse(
+              Q4b %in% northCentral, "North Central", ifelse(
+                Q4b %in% southEast, "Southeast", ifelse(
+                  Q4b %in% northEast, "Northeast", NA)))))))
+
+  lst <- list(all = myData, mysystem = dat)
+  
+  # Filter by region
+  if (region != "All regions combined") {
+    lst$all <- filter(lst$all, !is.na(Region) & Region == region)
+  }
+  
+  # Filter by health system type
+  if (system != "All system types") {
+    lst$all <- filter(lst$all, !is.na(Q2) & Q2 == system)
+  }
+  
+  lst <- lapply(lst, sumBaselineRates)
+  
+  # Prepare the data
+  rates <- lapply(lst, function(dat) {
+    
+    rates1Fem <- with(dat,
+                      sum(FemAge1_dose1,na.rm=T) / sum(FemAge1_total,na.rm=T))
+    rates2Fem <- with(dat,
+                      sum(FemAge2_dose1,na.rm=T) / sum(FemAge2_total,na.rm=T))
+    rates3Fem <- with(dat,
+                      sum(FemAge3_dose1,na.rm=T) / sum(FemAge3_total,na.rm=T))
+    rates1Men <- with(dat,
+                      sum(MenAge1_dose1,na.rm=T) / sum(MenAge1_total,na.rm=T))
+    rates2Men <- with(dat,
+                      sum(MenAge2_dose1,na.rm=T) / sum(MenAge2_total,na.rm=T))
+    rates3Men <- with(dat,
+                      sum(MenAge3_dose1,na.rm=T) / sum(MenAge3_total,na.rm=T))
+    rates1Both <- with(dat,
+                       sum(BothAge1_dose1,na.rm=T) / sum(BothAge1_total,na.rm=T))
+    rates2Both <- with(dat,
+                       sum(BothAge2_dose1,na.rm=T) / sum(BothAge2_total,na.rm=T))
+    rates3Both <- with(dat,
+                       sum(BothAge3_dose1,na.rm=T) / sum(BothAge3_total,na.rm=T))
+    
+    rates1 <- data.frame(rates = 
+                           c(rates1Fem, rates2Fem, rates3Fem,
+                             rates1Men, rates2Men, rates3Men,
+                             rates1Both, rates2Both, rates3Both))
+    rates1$Gender <- c(rep("Females",3),
+                       rep("Males",3),
+                       rep("Combined",3))
+    rates1$Dose <- "1+ Dose HPV"
+    rates1$Age <- rep(c("Age 9-10", "Age 11-12", "Age 13"),3)
+    
+    
+    rm(rates1Fem, rates2Fem, rates3Fem,
+       rates1Men, rates2Men, rates3Men,
+       rates1Both, rates2Both, rates3Both) 
+    
+    
+    rates1Fem <- with(dat,
+                      sum(FemAge1_dose2,na.rm=T) / sum(FemAge1_total,na.rm=T))
+    rates2Fem <- with(dat,
+                      sum(FemAge2_dose2,na.rm=T) / sum(FemAge2_total,na.rm=T))
+    rates3Fem <- with(dat,
+                      sum(FemAge3_dose2,na.rm=T) / sum(FemAge3_total,na.rm=T))
+    rates1Men <- with(dat,
+                      sum(MenAge1_dose2,na.rm=T) / sum(MenAge1_total,na.rm=T))
+    rates2Men <- with(dat,
+                      sum(MenAge2_dose2,na.rm=T) / sum(MenAge2_total,na.rm=T))
+    rates3Men <- with(dat,
+                      sum(MenAge3_dose2,na.rm=T) / sum(MenAge3_total,na.rm=T))
+    rates1Both <- with(dat,
+                       sum(BothAge1_dose2,na.rm=T) / sum(BothAge1_total,na.rm=T))
+    rates2Both <- with(dat,
+                       sum(BothAge2_dose2,na.rm=T) / sum(BothAge2_total,na.rm=T))
+    rates3Both <- with(dat,
+                       sum(BothAge3_dose2,na.rm=T) / sum(BothAge3_total,na.rm=T))
+    
+    rates2 <- data.frame(rates = 
+                           c(rates1Fem, rates2Fem, rates3Fem,
+                             rates1Men, rates2Men, rates3Men,
+                             rates1Both, rates2Both, rates3Both))
+    rm(rates1Fem, rates2Fem, rates3Fem,
+       rates1Men, rates2Men, rates3Men,
+       rates1Both, rates2Both, rates3Both) 
+    
+    rates2$Gender <- c(rep("Females",3),
+                       rep("Males",3),
+                       rep("Combined",3))
+    rates2$Dose <- "HPV Complete"
+    rates2$Age <- rep(c("Age 9-10", "Age 11-12", "Age 13"),3)
+    
+    rates <- rbind(rates1,rates2)
+    rm(rates1,rates2)
+    
+    rates$Gender <- factor(rates$Gender,
+                           levels = c("Females", "Males", "Combined"))
+    rates$Dose <- factor(rates$Dose,
+                         levels = c("1+ Dose HPV",
+                                    "HPV Complete"))
+    rates$Age <- factor(rates$Age,
+                        levels = c("Age 9-10", "Age 11-12", "Age 13"))
+    
+    rates$rates_string <- (rates$rates*100) %>%
+      round(1) %>%
+      format(nsmall = 1) %>%
+      paste0(., "%")
+    
+    return(rates)
+  })
+  
+  figures <- lapply(rates, function(x) {
+     ggplot(filter(x, Gender == "Combined"), aes(x = Dose,
+                                                y = rates,
+                                                fill = Age)) +
+      geom_col(width = 0.5, position = position_dodge(0.7))  +
+      geom_text(aes(label=rates_string), vjust=-0.5, size=2,
+                position = position_dodge(0.7)) +
+      scale_y_continuous(limits = seq(0,1),
+                         breaks = seq(0,1,0.2),
+                         labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
+      theme(legend.position = "bottom",
+            legend.title = element_blank(),
+            axis.title = element_blank(),
+            plot.title = element_text(hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0.5))
+  })
+  
+  grid.arrange(arrangeGrob(
+    figures[[2]] + theme(legend.position = "none") + labs(title = title1),
+    figures[[1]] + theme(legend.position = "none") + labs(title = title2),
+    nrow = 1),
+    getLegend(figures[[1]]), 
+    nrow=2, heights = c(10,1))
+  
+}
+
+
+
+
+# Followup dashboard ------------------------------------------------------
 
 
 #  Data one - 1 HPV dose - change in time   -------------------------------
@@ -1793,6 +2102,7 @@ fuDisplay2 <- function(dat, plots = 0) {
 }
 
 
+#  Final rates by sex - age 9-13  -------------------------------
 fuDisplay3 <- function(dat, healthSystem){
 
   dat <- sumFURates(dat)
@@ -1844,14 +2154,27 @@ fuDisplay3 <- function(dat, healthSystem){
   rates$Gender <- c("Females", "Males", "Combined", "Females", "Males", "Combined")
   rates$Gender <- factor(rates$Gender, levels = c("Females", "Males", "Combined"))
   rates$Dose <- c(rep("1+ Dose HPV", 3), rep("HPV Complete", 3))
+  
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+  
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+  
   g <- ggplot(rates, aes(x = Dose,
                          y = rates,
                          fill = Gender)) +
     geom_col(width = 0.5, position = position_dodge(0.7))  +
+    geom_text(aes(label=rates_string), vjust=-0.5, size=3,
+              position = position_dodge(0.7)) +
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
-    labs(title = "Followup HPV Vaccination Rates by Sex (Age 9-13)",
+    labs(title = "Final HPV Vaccination Rates by Sex (Age 9-13)",
          subtitle = dat[["HealthSystem"]]) +
     theme(legend.position = "bottom",
           legend.title = element_blank(),
@@ -1862,6 +2185,7 @@ fuDisplay3 <- function(dat, healthSystem){
   return(g)
 }
 
+#  Final rates by sex - age 13 -------------------------------
 fuDisplay4 <- function(dat) {
 
    dat <- sumFURates(dat)
@@ -1935,16 +2259,25 @@ fuDisplay4 <- function(dat) {
                        levels = c("1+ Dose HPV",
                                   "HPV Complete",
                                   "Mening",
-                                  "Tdap") )               
+                                  "Tdap") )         
+  
+  rates$rates_string <- (rates$rates*100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0(., "%")
+  
+  
   
   g <- ggplot(rates, aes(x = Gender,
                          y = rates,
                          fill = Dose)) +
     geom_col(width = 0.5, position = position_dodge(0.7))  +
+    geom_text(aes(label=rates_string), vjust=-0.5, size=3,
+              position = position_dodge(0.7)) +
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
-    labs(title = "Followup HPV Vaccination Rates by Sex (Age 13)",
+    labs(title = "Final HPV Vaccination Rates by Sex (Age 13)",
          subtitle = dat[["HealthSystem"]]) +
     theme(legend.position = "bottom",
           legend.title = element_blank(),

@@ -15,11 +15,20 @@ library(shinyalert)
 library(RSQLite)
 library(rhandsontable)
 library(dbplyr)
+library(parallel)
 library(grid)
 rm(list=ls())
 
 
-### Here is a change I want to see if becky gets it - 11/30/2020
+
+# December 1st 2020
+# App authors:  Brian Carter, Becky Hodge
+# Note to reviewers:  The authors are not responsible for any positive or negative
+#  side effects that stem from reading or reviewing this app.  This includes
+#  any physical or emotional trauma, acute and post-acute, that you may experience.
+#  Read this app at your own risk, the authors relinquish all responsibility.
+#  The app works, nothing else matters.
+
 
 
 # Production URLs
@@ -398,8 +407,14 @@ ui = dashboardPage(
               uiOutput("Q27"), uiOutput("Q27_other")
             ),
             uiOutput("Q28"), 
-            uiOutput("Q28_other"),
-            uiOutput("Q28_other_message"),
+            fluidRow(
+              column(8,
+                     uiOutput("Q28_other")),
+              column(4,
+                     uiOutput("Q28_other_message"))
+            ),
+            #uiOutput("Q28_other"),
+            #uiOutput("Q28_other_message"),
             uiOutput("Q29"),
             HTML("<br>"),
             
@@ -778,11 +793,10 @@ ui = dashboardPage(
                                     
                                     # Select Sex
                                     selectInput(inputId = "mu_sex",
-                                                label = "Will you enter data by sex (males and females separately) or combined?",
-                                                choices = c("Males",
-                                                            "Females",
-                                                            "Combined"),
-                                                selected = "Males"),
+                                                label = "sex",
+                                                choices = c("Males and females seperately",
+                                                            "Males and females combined"),
+                                                selected = "Males and females combined"),
                                     
                                     # Choose starting month
                                     uiOutput("start_month")
@@ -804,18 +818,11 @@ ui = dashboardPage(
                               verticalLayout(
                                 HTML("<br>"),
                                 HTML("<br>"),
-                                fluidRow(title = "Enter your data into this table",
-                                         column(5, 
-                                                offset = 0, 
-                                                align = "left",
-                                                verticalLayout(
-                                                  HTML("<br>"),
-                                                  rHandsontableOutput("editable_table", width = "100%"))), 
-                                         column(7, 
-                                                offset = 0,
-                                                plotOutput("myplot", width = "100%"))),
-                                  actionButton("save_monthly", "Save data", class="success")
-                                ),
+                                uiOutput("rates_9_10"),
+                                uiOutput("rates_11_12"),
+                                uiOutput("rates_13"),
+                                actionButton("save_monthly", "Save data", class="success")
+                              ),
                               helpText("Please save after entering data in each table so you 
                                            can follow your progress throughout the year."),
                               HTML("<br><br>"),
@@ -830,7 +837,7 @@ ui = dashboardPage(
                               helpText("You can use this dashboard to enter clinic-level data updates and track your progress through the year."),
                               HTML("<br>")
                               
-                              ) # end clinic-level data entry
+                     ) # end clinic-level data entry
               ) # end tab box
       ), # end tab home
       
@@ -988,51 +995,92 @@ ui = dashboardPage(
                                      can see their rates visualized."
             ),
             HTML("<br><br>"),
-            
-            splitLayout(
-              plotOutput("baseVacRates1"),
-              box(
-                h4("Conversation Corner"),
-                HTML("<br>"),
-                tags$head(tags$style(
-                  HTML("pre { white-space: pre-wrap; word-break: keep-all; }")
-                )),
-                htmlOutput("conversationCorner1"),
-                width = 12,
-                align = "center",
-                background = "light-blue"
-              )
+            # Figure 1
+            fluidRow(
+              column(7,
+                     plotOutput("baseVacRates1")),
+              column(5,
+                     verticalLayout(
+                       HTML("<br><br><br>"),
+                       box(
+                         h4("Conversation Corner"),
+                         HTML("<br>"),
+                         tags$head(tags$style(
+                           HTML("pre { white-space: pre-wrap; word-break: keep-all; }")
+                         )),
+                         htmlOutput("conversationCorner1"),
+                         width = 12,
+                         align = "center",
+                         background = "light-blue"
+                       )  
+                     ))
             ),
+
             HTML("<br><br>"),
-            h4(
-              strong("Baseline HPV vaccination rates compared to other vaccines"),
+            
+            # Figure 2
+            h4(strong("Baseline HPV vaccination rates compared to other vaccines"),
               align = "center"
             ),
-            splitLayout(
-              plotOutput("baseVacRates2"),
-              box(
-                h4("Conversation Corner"),
-                HTML("<br>"),
-                htmlOutput("conversationCorner2"),
-                width = 12,
-                align = "center",
-                background = "light-blue"
-              )
+            fluidRow(
+              column(7,
+                     plotOutput("baseVacRates2", height = "600px")),
+              column(5,
+                     verticalLayout(
+                     HTML("<br><br><br><br>"),
+                     box(
+                       h4("Conversation Corner"),
+                       HTML("<br>"),
+                       htmlOutput("conversationCorner2"),
+                       width = 12,
+                       align = "center",
+                       background = "light-blue"
+                     )))
             ),
+            # Figure 3
             HTML("<br><br>"),
             h4(strong("Baseline HPV vaccination rates by age"), align = "center"),
-            splitLayout(
-              plotOutput("baseVacRates3"),
-              box(
-                h4("Conversation Corner"),
-                HTML("<br>"),
-                #tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
-                htmlOutput("conversationCorner3"),
-                width = 12,
-                align = "center",
-                background = "light-blue"
-              )
-            )
+            fluidRow(
+              column(7,
+                     plotOutput("baseVacRates3")),
+             column(5,
+                    verticalLayout(
+                      HTML("<br><br><br>"),
+                      box(
+                        h4("Conversation Corner"),
+                        HTML("<br>"),
+                        #tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
+                        htmlOutput("conversationCorner3"),
+                        width = 12,
+                        align = "center",
+                        background = "light-blue"
+                      )
+                    )) 
+            ),
+            # Figure 4
+            HTML("<br><br>"),
+            h4(strong("How does your health system compare to others?"), align = "center"),
+            fluidRow(
+              column(6,
+                     selectInput(inputId = "selectRegion",
+                                 label = "Please select a region",
+                                 choices = c("All regions combined",
+                                             "West",
+                                             "North",
+                                             "South",
+                                             "North Central",
+                                             "Southeast",
+                                             "Northeast"),
+                                 selected = "All regions combined")),
+              column(6, 
+                     selectInput(inputId = "selectSystemType",
+                                 label = "Please select a system type",
+                                 choices = c("All system types",
+                                             "IDS", 
+                                             "FQHC")))
+                     ),
+            plotOutput("baseVacRates4")
+
           )
           
         ) # End TabBox
@@ -1060,8 +1108,8 @@ server <- function(input, output, session) {
   inputData <- dbConnect(SQLite(), "inputData.DB")
   
   # User directory
-  shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
-  # shortUser <- "bcarter6"
+  #shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
+  shortUser <- "bcarter6"
   # Define the endpoint and container
   # One primary containers: DataSrc
   endpoint <- storage_endpoint(
@@ -1185,12 +1233,12 @@ server <- function(input, output, session) {
       selectInput(
         inputId = "Q4b",
         label = "4b. State",
-        choices = c(
-          "","AL","AK","AZ","AR","CA","CO","CT","DE",
-          "FL","GA","HI", "ID","IL","IN","IA","KS","KY",
+        choices = c("",
+          "AL","AK","AZ","AR","CA","CO","CT","DC","DE",
+          "FL","GA","GU","HI", "ID","IL","IN","IA","KS","KY",
           "LA","ME","MD","MA","MI","MN","MS","MO","MT",
           "NE","NV","NH","NJ","NM","NY","NC","ND","OH",
-          "OK","OR","PA","RI","SC","SD","TN","TX","UT",
+          "OK","OR","PA","PR","RI","SC","SD","TN","TX","UT",
           "VT","VA","WA","WV","WI", "WY"),
         selected = demographics$Q4b,
         selectize = F
@@ -2068,14 +2116,14 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     })
     output$Q28_other <- renderUI({
       validate(need(input$Q28, ""))
-      if ("We can't report on these ages (other, please specify)" %in% input$Q28) {
-        textInput(
+      if (("We can't report on these ages (other, please specify)" %in% input$Q28) &
+          (!c("9-10", "11-12", "13") %in% input$Q28)) {
+        textAreaInput(
           inputId = "Q28_other",
           label = "Please specify",
           value = savedRates$Q28_other,
           placeholder = "",
-          width = "150%"
-        )
+          height = "100px")
       } else {
         return(NULL)
       }
@@ -2083,10 +2131,13 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     
     # Include message about how they should contact Jennifer to resolve this issue
     output$Q28_other_message <- renderUI({
-      validate(need(!("We can't report on these ages (other, please specify)" %in% input$Q28),
-                  "Please contact Jennifer Isher-Witt at Jennifer.Ish@cancer.org to resolve this issue"
-        ), errorClass = "red_warnings"
-        )
+      validate(need(input$Q28, ""))
+      if (("We can't report on these ages (other, please specify)" %in% input$Q28) &
+          (!c("9-10", "11-12", "13") %in% input$Q28)) {
+        HTML("<br>")
+        helpText("Please contact Jennifer Isher-Witt at Jennifer.Ish@cancer.org to resolve this issue",
+                  style = "color:red")
+    }
     })
     
     output$Q29 <- renderUI({
@@ -2100,10 +2151,37 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     })
     
     
+    # This is how you get rid of the boxes
+    observe({
+      x <- input$Q28
+      if (!"9-10" %in% x) {
+        output$brates_9_10 <- renderUI(NULL)
+      }
+      if (!"11-12" %in% x) {
+        output$brates_11_12 <- renderUI(NULL)
+      }
+      if (!"13" %in% x) {
+        output$brates_13 <- renderUI(NULL)
+      }
+      
+    })
+    
     # Create the ages 9-10 boxes
     observeEvent(list(input$Q28, input$Q29), {
       validate(need(input$Q28, ""))
       validate(need(input$Q29, ""))
+      
+      
+      
+      if (is.na(input$Q28)) {
+        output$brates_9_10 <- NULL
+        output$brates_11_12 <- NULL
+        output$brates_13 <- NULL
+      }
+      
+      
+      
+      
       
       # Boys and girls - ages 9-10
       if ("9-10" %in% input$Q28 &
@@ -2306,6 +2384,9 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       } 
+      else if (!"9-10" %in% input$Q28) {
+        output$brates_9_10 <- NULL
+      }
       
       # Ages 9-10, combined
       if ("9-10" %in% input$Q28 &
@@ -2402,12 +2483,10 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       }
-      
-      if (!("9-10" %in% input$Q28)) {
-        output$brates_9_10<- renderUI({
-          return()
-        })
+      else if (!"9-10" %in% input$Q28) {
+        output$brates_9_10 <- NULL
       }
+      
       
     }) # end the 9-10 observation
     
@@ -2717,6 +2796,10 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
         })
         
       }
+      else if (!"11-12" %in% input$Q28) {
+        output$brates_11_12 <- NULL
+      }
+      
       # Ages 11-12 - boys and girls combined
       if ("11-12" %in% input$Q28 &
           input$Q29 == "No, we will have combined rate data") {
@@ -2864,11 +2947,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       }
-      
-      if (!("11-12" %in% input$Q28)) {
-        output$brates_11_12<- renderUI({
-          return()
-        })
+      else if (!"11-12" %in% input$Q28) {
+        output$brates_11_12 <- NULL
       }
     }) # end the 11-12 observation
     
@@ -3176,6 +3256,10 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       }
+      else if (!("13" %in% input$Q28)) {
+        output$brates_13<- NULL
+      }
+      
       # Boys and girls combined - age 13
       if ("13" %in% input$Q28 &
           input$Q29 == "No, we will have combined rate data") {
@@ -3323,13 +3407,9 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       }
-      
-      if (!("13" %in% input$Q28)) {
-        output$brates_13<- renderUI({
-          return()
-        })
-      }
-      
+        else if (!("13" %in% input$Q28)) {
+          output$brates_13<- NULL
+        }
     }) # end the 13 observation
     
     output$Q30 <- renderUI({
@@ -4826,6 +4906,21 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
         label = "4.  Please share anything else about your final data you'd like us to know.",
         value = followupRates$Q4FU,
         rows = 4)
+    })
+    
+    # This is how you get rid of the boxes
+    observe({
+      x <- input$Q2FU
+      if (!"9-10" %in% x) {
+        output$furates_9_10 <- renderUI(NULL)
+      }
+      if (!"11-12" %in% x) {
+        output$furates_11_12 <- renderUI(NULL)
+      }
+      if (!"13" %in% x) {
+        output$furates_13 <- renderUI(NULL)
+      }
+      
     })
     
     # Create the ages 9-10 boxes
@@ -7387,6 +7482,8 @@ if (condition == 1) {
   
   # Baseline Dashboard ------------------------------------------------------
   
+  df <- getBaselineData(loc=DataSrc, filename = userFilename)
+  allData <- allStudyData(loc = DataSrc)
   
       # Figure 1 - all ages combined
       output$conversationCorner1 <- renderText({
@@ -7400,8 +7497,10 @@ if (condition == 1) {
           interventions specifically target HPV initiation?"
         )
       })
+  
+ 
+  
       output$baseVacRates1 <- renderPlot({
-        df <- getBaselineData(loc=DataSrc, filename = userFilename)
         figure1(df)
       })
       
@@ -7423,8 +7522,19 @@ if (condition == 1) {
         )
       })
       output$baseVacRates2 <- renderPlot({
-        df <- getBaselineData(loc=DataSrc, filename = userFilename)
-        figure2(df)
+        age2 <- figure2(df, "age2")
+        age3 <- figure2(df, "age3")
+        leg <- getLegend(age2)
+        
+        mytitle <- paste("Baseline HPV vaccination rates compared to other vaccines",
+                          df[["HealthSystem"]],
+                          sep ="\n")
+        
+        grid.arrange(age2 + labs(subtitle = "Ages 11-12", title = NULL) + theme(legend.position = "none") , 
+                     age3 + labs(subtitle = "Age 13", title = NULL) + theme(legend.position = "bottom"),
+                     top = mytitle,
+                     nrow = 2,
+                     heights = c(3,4)) 
       })
       
       
@@ -7442,10 +7552,14 @@ if (condition == 1) {
       })
       
       output$baseVacRates3 <- renderPlot({
-        df <- getBaselineData(loc=DataSrc, filename = userFilename)
         figure3(df)
       })
       
+      output$baseVacRates4 <- renderPlot({
+        figure4(df, allData, region = input$selectRegion,
+                system = input$selectSystemType)
+      })
+
       
   # Baseline dashboard - tab2 - plot by site --------------------------------
       
@@ -7480,16 +7594,18 @@ if (condition == 1) {
           for the summer vaccine season, a time when you can have the most impact <br/>
           on vaccination rates!"
       })
+      df <- getAllData(loc=DataSrc, filename = userFilename)
+      
       
       output$fuTable1 <- DT::renderDataTable({
-        df <- getAllData(loc=DataSrc, filename = userFilename)
         fuDisplay1(df)
       },
       options = list(
         paging = FALSE,
         searching = FALSE,
         lengthChange = FALSE,
-        pageLength = 15
+        pageLength = 15,
+        ordering = FALSE
       ),
       rownames = FALSE)
       output$fuFigure1 <-
@@ -7497,19 +7613,21 @@ if (condition == 1) {
       
       # Figure2
       output$fuTable2 <- DT::renderDataTable({
-        df <- getAllData(loc=DataSrc, filename = userFilename)
         fuDisplay2(df)
       },
       options = list(
         paging = FALSE,
         searching = FALSE,
         lengthChange = FALSE,
-        pageLength = 15
+        pageLength = 15,
+        ordering = FALSE
       ),
       rownames = FALSE)
       output$fuFigure2 <-
-        renderPlot(fuDisplay2(getAllData(loc=DataSrc, filename = userFilename), 1))
-      
+        renderPlot(
+          fuDisplay2(df, 1)
+        )
+
       
       output$FUconversationCorner3 <- renderText({
         "Were there increases in HPV vaccination rates? <br/><br/>
@@ -7517,9 +7635,12 @@ if (condition == 1) {
           Was the cross-over impact on mening or tdap vaccination rates? <br/><br/>"
       })
       output$fuFigure3 <-
-        renderPlot(fuDisplay3(getFollowupData(loc=DataSrc, filename = userFilename)))
-      output$fuFigure4 <-
-        renderPlot(fuDisplay4(getFollowupData(loc=DataSrc, filename = userFilename)))
+        renderPlot(fuDisplay3(df))
+      output$fuFigure4 <- 
+        renderPlot(fuDisplay4(df))
+        #renderPlot(fuDisplay3(getFollowupData(loc=DataSrc, filename = userFilename)))
+     # output$fuFigure4 <-
+        #renderPlot(fuDisplay4(getFollowupData(loc=DataSrc, filename = userFilename)))
       
       
       
@@ -7897,11 +8018,11 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   storage_download(DataSrc, userFilename, overwrite = T)
   myDB <- dbConnect(SQLite(), userFilename)
   monthInput <- dbReadTable(myDB, "age1")
-
+  
   # Set a title for the first figure
-  ages <- input$mu_ages
+  age <- input$mu_ages
   sex <- input$mu_sex
-  myTitle <<- paste("Monthly vaccination rates in", sex, "age", ages)
+  myTitle <<- paste("Monthly vaccination rates in", tolower(sex), "age", age)
   
   
   # When they update the start month, we can order all the months identically
@@ -7930,71 +8051,224 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   dbDisconnect(myDB)
   rm(myDB)
   
-  # Boys first --------------------------------------------------------------
+  # this little bit will make the tables disappear when unselected
+  observe({
+    x <- input$mu_ages
+    if (!"9-10" %in% x) {
+      output$rates_9_10 <- renderUI(NULL)
+    }
+    if (!"11-12" %in% x) {
+      output$rates_11_12 <- renderUI(NULL)
+    }
+    if (!"13" %in% x) {
+      output$rates_13 <- renderUI(NULL)
+    }
+    
+  })
   
-  if (input$mu_sex == "Males" & input$mu_ages == "9-10") {
-    df <- dplyr::select(myData$age1, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M)
-  }
-  if (input$mu_sex == "Males" & input$mu_ages == "11-12"){
-    df <- dplyr::select(myData$age2, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, TDap = TDapM)
-  }
-  if (input$mu_sex == "Males" & input$mu_ages == "13"){
-    df <- dplyr::select(myData$age3, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, TDap = TDapM)
-  }
+  # Prepare the datasets
+  girlsage1 <- dplyr::select(myData$age1, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F)
+  girlsage2 <- dplyr::select(myData$age2, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF)
+  girlsage3 <- dplyr::select(myData$age3, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF)
+  
+  boysage1 <- dplyr::select(myData$age1, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M)
+  boysage2 <- dplyr::select(myData$age2, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM)
+  boysage3 <- dplyr::select(myData$age3, Month, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM)
+  
+  bothage1 <- dplyr::select(myData$age1, Month, Total, Dose1, Dose2)
+  bothage2 <- dplyr::select(myData$age2, Month, Total, Dose1, Dose2, Meningococcal, Tdap = TDap)
+  bothage3 <- dplyr::select(myData$age3, Month, Total, Dose1, Dose2, Meningococcal, Tdap = TDap)
   
   
   
+  # Layout the UI elements
+  if (sex == "Males and females combined" & age == "9-10") {
+    output$rates_9_10 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 9-10", align = "center"),
+          uiOutput("both_9_10")
+        ),
+        plotOutput("both_9_10_plots"))
+    })
+  }
+  if (sex == "Males and females combined" & age == "11-12") {
+    output$rates_11_12 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 11-12", align = "center"),
+          uiOutput("both_11_12")
+        ),
+        plotOutput("both_11_12_plots"))
+    })
+  }
+  if (sex == "Males and females combined" & age == "13") {
+    output$rates_13 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 13", align = "center"),
+          uiOutput("both_13")
+        ),
+        plotOutput("both_13_plots"))
+    })
+  }
   
-  # Girls -------------------------------------------------------------------
+  if (sex == "Males and females seperately" & age == "9-10") {
+    output$rates_9_10 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 9-10", align = "center"),
+          splitLayout(uiOutput("girls_9_10"), uiOutput("boys_9_10"))
+        ),
+        plotOutput("seperate_9_10_plots"))
+    }) 
+  }
+  if (sex == "Males and females seperately" & age == "11-12") {
+    output$rates_11_12 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 11-12", align = "center"),
+          splitLayout(uiOutput("girls_11_12"), uiOutput("boys_11_12"))
+        ),
+        plotOutput("seperate_11_12_plots"))
+    }) 
+  }
+  if (sex == "Males and females seperately" & age == "13") {
+    output$rates_13 <- renderUI({
+      splitLayout(
+        verticalLayout(
+          h4("Males and Females Combined, Ages 13", align = "center"),
+          splitLayout(uiOutput("girls_13"), uiOutput("boys_13"))
+        ),
+        plotOutput("seperate_13_plots"))
+    }) 
+  }
   
-  if (input$mu_sex == "Females" & input$mu_ages == "9-10") {
-    df <- dplyr::select(myData$age1, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F)
-  }
-  if (input$mu_sex == "Females" & input$mu_ages == "11-12"){
-    df <- dplyr::select(myData$age2, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, TDap = TDapF)
-  }
-  if (input$mu_sex == "Females" & input$mu_ages == "13"){
-    df <- dplyr::select(myData$age3, Month, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, TDap = TDapF)
-  }
+  # Define the table UI
+  output$both_9_10 <- renderUI({rHandsontableOutput("bothtable1", width = "200%")})
+  output$both_11_12 <- renderUI({rHandsontableOutput("bothtable2", width = "200%")})
+  output$both_13 <- renderUI({rHandsontableOutput("bothtable3", width = "200%")})
+  
+  output$girls_9_10 <- renderUI({rHandsontableOutput("girlstable1", width = "100%")})
+  output$girls_11_12 <- renderUI({rHandsontableOutput("girlstable2", width = "100%")})
+  output$girls_13 <- renderUI({rHandsontableOutput("girlstable3", width = "100%")})
+  
+  output$boys_9_10 <- renderUI({rHandsontableOutput("boystable1", width = "100%")})
+  output$boys_11_12 <- renderUI({rHandsontableOutput("boystable2", width = "100%")})
+  output$boys_13 <- renderUI({rHandsontableOutput("boystable3", width = "100%")})
   
   
-  # Combined ----------------------------------------------------------------
-  if (input$mu_sex == "Combined" & input$mu_ages == "9-10") {
-    df <- dplyr::select(myData$age1, Month, Total, Dose1, Dose2)
-  }
-  if (input$mu_sex == "Combined" & input$mu_ages == "11-12"){
-    df <- dplyr::select(myData$age2, Month, Total, Dose1, Dose2, Meningococcal, TDap)
-  }
-  if (input$mu_sex == "Combined" & input$mu_ages == "13"){
-    df <- dplyr::select(myData$age3, Month, Total, Dose1, Dose2, Meningococcal, TDap)
-  }
-  
-
- # Output table ------------------------------------------------------------
-  output$editable_table <- renderRHandsontable({
-    rhandsontable(df, rowHeaders = NULL) %>%
-      hot_col(names(df),  
+  # Render the tables      
+  output$bothtable1 <- renderRHandsontable({
+    rhandsontable(bothage1, rowHeaders = NULL)%>%
+      hot_col(names(bothage1),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
                td.style.background = 'lightblue';
                }") 
+  })      
+  output$bothtable2 <- renderRHandsontable({
+    rhandsontable(bothage2, rowHeaders = NULL)%>%
+      hot_col(names(bothage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$bothtable3 <- renderRHandsontable({
+    rhandsontable(bothage3, rowHeaders = NULL)%>%
+      hot_col(names(bothage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })  
+  
+  output$girlstable1 <- renderRHandsontable({
+    rhandsontable(girlsage1, rowHeaders = NULL)%>%
+      hot_col(names(girlsage1),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$girlstable2 <- renderRHandsontable({
+    rhandsontable(girlsage2, rowHeaders = NULL)%>%
+      hot_col(names(girlsage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$girlstable3 <- renderRHandsontable({
+    rhandsontable(girlsage3, rowHeaders = NULL)%>%
+      hot_col(names(girlsage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })     
+  
+  output$boystable1 <- renderRHandsontable({
+    rhandsontable(boysage1, rowHeaders = NULL)%>%
+      hot_col(names(boysage1),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$boystable2 <- renderRHandsontable({
+    rhandsontable(boysage2, rowHeaders = NULL)%>%
+      hot_col(names(boysage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$boystable3 <- renderRHandsontable({
+    rhandsontable(boysage3, rowHeaders = NULL)%>%
+      hot_col(names(boysage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })     
+  
+  
+  # Figures
+  if (sex == "Males and females combined") {
+  output$both_9_10_plots <- renderPlot(monthlyFigure(hot_to_r(input$bothtable1)))
+  output$both_11_12_plots <- renderPlot(monthlyFigure(hot_to_r(input$bothtable2)))
+  output$both_13_plots <- renderPlot(monthlyFigure(hot_to_r(input$bothtable3)))
+  }
+  
+  renderFigures <- function(girls, boys, title) {
+    grid.arrange(arrangeGrob(
+      girls + theme(legend.position = "none") + labs(title = "Females"),
+      boys + theme(legend.position = "none") + labs(title = "Males"),
+      nrow = 2, top = title),
+      getLegend(girls),
+      nrow=2, heights = c(10,1)
+    )
+  }
+  
+  output$seperate_9_10_plots <- renderPlot({
+    girls <- monthlyFigure(hot_to_r(input$girlstable1))
+    boys <- monthlyFigure(hot_to_r(input$boystable1))
+    renderFigures(girls, boys, "Males and females, ages 9-10")
   })
   
-  output$myplot <- renderPlot(monthlyFigure(hot_to_r(input$editable_table)))
-  
-  
-  storage_download(DataSrc, userFilename, overwrite = T)
-  tempDB <- dbConnect(SQLite(), userFilename)
-  n <- c("age1","age2","age3")
-  dat <- lapply(n, function(x) {
-    dbReadTable(tempDB, x)
+  output$seperate_11_12_plots <- renderPlot({
+    girls <- monthlyFigure(hot_to_r(input$girlstable2))
+    boys <- monthlyFigure(hot_to_r(input$boystable2))
+    renderFigures(girls, boys, "Males and females, ages 11-12")
   })
-  names(dat) <- n
-  rm(n)
-  dbDisconnect(tempDB)
-  rm(tempDB)
-  output$allPlots <- renderPlot(threeFigures(dat))
   
+  output$seperate_13_plots <- renderPlot({
+    girls <- monthlyFigure(hot_to_r(input$girlstable3))
+    boys <- monthlyFigure(hot_to_r(input$boystable3))
+    renderFigures(girls, boys, "Males and females, age 13")
+  })
   
 })
 
@@ -8010,90 +8284,88 @@ observeEvent(input$save_monthly, {
   myData$age2 <- dbReadTable(myDB, "age2")
   myData$age3 <- dbReadTable(myDB, "age3")
   
+  age <- input$mu_ages
+  sex <- input$mu_sex
+  
+  
+  
+  
+  if (sex == "Males and females combined" & age == "9-10") {
+  both1 <- hot_to_r(input$bothtable1)
+  myData$age1$Total <- both1$Total
+  myData$age1$Dose1  <- both1$Dose1
+  myData$age1$Dose2  <- both1$Dose2
+  }
+  
+  if (sex == "Males and females combined" & age == "11-12") {
+  both2 <- hot_to_r(input$bothtable2)
+  myData$age2$Total <- both2$Total
+  myData$age2$Dose1 <- both2$Dose1
+  myData$age2$Dose2 <- both2$Dose2
+  myData$age2$Meningococcal <- both2$Meningococcal
+  myData$age2$TDap <- both2$Tdap
+  }
+  
+  if (sex == "Males and females combined" & age == "13") {
+  both3 <- hot_to_r(input$bothtable3)
+  myData$age3$Total <- both3$Total
+  myData$age3$Dose1 <- both3$Dose1
+  myData$age3$Dose2 <- both3$Dose2
+  myData$age3$Meningococcal <- both3$Meningococcal
+  myData$age3$TDap <- both3$Tdap
+  }
+  
+  
   # Age 9-10
-  if (input$mu_sex == "Males" & input$mu_ages == "9-10") {
-    df <- hot_to_r(input$editable_table)
-    myData$age1$TotalM <- df$Total
-    myData$age1$Dose1M <- df$Dose1
-    myData$age1$Dose2M <- df$Dose2
-    output$myplot <- renderPlot(monthlyFigure(df))
-  }
-  if (input$mu_sex == "Females" & input$mu_ages == "9-10") {
-    df <- hot_to_r(input$editable_table)
-    myData$age1$TotalF <- df$Total
-    myData$age1$Dose1F <- df$Dose1
-    myData$age1$Dose2F <- df$Dose2
-    output$myplot <- renderPlot(monthlyFigure(df))
-  }
-  if (input$mu_sex == "Combined" & input$mu_ages == "9-10") {
-    df <- hot_to_r(input$editable_table)
-    myData$age1$Total <- df$Total
-    myData$age1$Dose1 <- df$Dose1
-    myData$age1$Dose2 <- df$Dose2
-    output$myplot <- renderPlot(monthlyFigure(df))
-  }
-  
-  # Age 11-12
-  if (input$mu_sex == "Males" & input$mu_ages == "11-12") {
-    df <- hot_to_r(input$editable_table)
-    myData$age2$TotalM <- df$Total
-    myData$age2$Dose1M <- df$Dose1
-    myData$age2$Dose2M <- df$Dose2
-    myData$age2$MeningococcalM <- df$Meningococcal
-    myData$age2$TDapM <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
+  if (sex == "Males and females seperately" & age == "9-10") {
+    girls1 <- hot_to_r(input$girlstable1)
+    boys1 <- hot_to_r(input$boystable1)
+    
+    myData$age1$TotalM <- boys1$Total
+    myData$age1$Dose1M <- boys1$Dose1
+    myData$age1$Dose2M <- boys1$Dose2
+    
+    myData$age1$TotalF <- girls1$Total
+    myData$age1$Dose1F <- girls1$Total
+    myData$age1$Dose2F <- girls1$Total
+    
     
   }
-  if (input$mu_sex == "Females" & input$mu_ages == "11-12") {
-    df <- hot_to_r(input$editable_table)
-    myData$age2$TotalF <- df$Total
-    myData$age2$Dose1F <- df$Dose1
-    myData$age2$Dose2F <- df$Dose2
-    myData$age2$MeningococcalF <- df$Meningococcal
-    myData$age2$TDapF  <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
+  if (sex == "Males and females seperately" & age == "11-12") {
+    girls2 <- hot_to_r(input$girlstable2)
+    boys2 <- hot_to_r(input$boystable2)
+    
+    
+    myData$age2$TotalM <- boys2$Total
+    myData$age2$Dose1M <- boys2$Dose1
+    myData$age2$Dose2M <- boys2$Dose2
+    myData$age2$MeningococcalM <- boys2$Meningococcal
+    myData$age2$TDapM <- boys2$Tdap
+    
+    myData$age2$TotalF <- girls2$Total
+    myData$age2$Dose1F <- girls2$Total
+    myData$age2$Dose2F <- girls2$Total
+    myData$age2$MeningococcalF <- boys2$Meningococcal
+    myData$age2$TDapF <- boys2$Tdap
+    
     
   }
-  if (input$mu_sex == "Combined" & input$mu_ages == "11-12") {
-    df <- hot_to_r(input$editable_table)
-    myData$age2$Total <- df$Total
-    myData$age2$Dose1 <- df$Dose1
-    myData$age2$Dose2 <- df$Dose2
-    myData$age2$Meningococcal <- df$Meningococcal
-    myData$age2$TDap  <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
+  if (sex == "Males and females seperately" & age == "13") {
+    girls3 <- hot_to_r(input$girlstable3)
+    boys3 <- hot_to_r(input$boystable3)
     
-  }
-  
-  # Age 113
-  if (input$mu_sex == "Males" & input$mu_ages == "13") {
-    df <- hot_to_r(input$editable_table)
-    myData$age3$TotalM <- df$Total
-    myData$age3$Dose1M <- df$Dose1
-    myData$age3$Dose2M <- df$Dose2
-    myData$age3$MeningococcalM <- df$Meningococcal
-    myData$age3$TDapM <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
     
-  }
-  if (input$mu_sex == "Females" & input$mu_ages == "13") {
-    df <- hot_to_r(input$editable_table)
-    myData$age3$TotalF <- df$Total
-    myData$age3$Dose1F <- df$Dose1
-    myData$age3$Dose2F <- df$Dose2
-    myData$age3$MeningococcalF <- df$Meningococcal
-    myData$age3$TDapF  <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
+    myData$age3$TotalM <- boys3$Total
+    myData$age3$Dose1M <- boys3$Dose1
+    myData$age3$Dose2M <- boys3$Dose2
+    myData$age3$MeningococcalM <- boys3$Meningococcal
+    myData$age3$TDapM <- boys3$Tdap
     
-  }
-  if (input$mu_sex == "Combined" & input$mu_ages == "13") {
-    df <- hot_to_r(input$editable_table)
-    myData$age3$Total <- df$Total
-    myData$age3$Dose1 <- df$Dose1
-    myData$age3$Dose2 <- df$Dose2
-    myData$age3$Meningococcal <- df$Meningococcal
-    myData$age3$TDap  <- df$TDap
-    output$myplot <- renderPlot(monthlyFigure(df))
+    myData$age3$TotalF <- girls3$Total
+    myData$age3$Dose1F <- girls3$Total
+    myData$age3$Dose2F <- girls3$Total
+    myData$age3$MeningococcalF <- girls3$Meningococcal
+    myData$age3$TDapF <- girls3$Tdap
     
   }
   
