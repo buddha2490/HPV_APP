@@ -44,7 +44,7 @@ source("Functions.R")
 ui = dashboardPage(
   title = "HPV Vaccination Systems and Strategies Inventory 2021",
   header = dashboardHeader(title = textOutput("username")),
-  
+ 
   
   # Sidebar layout ----------------------------------------------------------
   sidebar = dashboardSidebar(
@@ -778,6 +778,10 @@ ui = dashboardPage(
       tabItem("optional",
               tabBox(width = NULL,
                      tabPanel(title = "Monthly data entry",
+                              tags$style(type="text/css",
+                                         ".shiny-output-error { visibility: hidden; }",
+                                         ".shiny-output-error:before { visibility: hidden; }"
+                              ),
                               h2("Monthly data entry"),
                               HTML("<br>"),
                               helpText("You can use this dashboard to enter monthly data updates and track your progress through the year."),
@@ -1108,8 +1112,8 @@ server <- function(input, output, session) {
   inputData <- dbConnect(SQLite(), "inputData.DB")
   
   # User directory
-  #shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
-  shortUser <- "bcarter6"
+  shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
+  #shortUser <- "bcarter6"
   # Define the endpoint and container
   # One primary containers: DataSrc
   endpoint <- storage_endpoint(
@@ -8084,70 +8088,109 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   # Layout the UI elements
   if (sex == "Males and females combined" & age == "9-10") {
     output$rates_9_10 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 9-10", align = "center"),
-          uiOutput("both_9_10")
-        ),
-        plotOutput("both_9_10_plots"))
+      wellPanel(
+        h4("Males and Females Combined, Ages 9-10", align = "center"),
+      fluidRow(
+        column(6, 
+                 uiOutput("both_9_10")
+               ),
+        column(6, align = "center",
+               plotOutput("both_9_10_plots")
+      )))
     })
   }
   if (sex == "Males and females combined" & age == "11-12") {
     output$rates_11_12 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 11-12", align = "center"),
-          uiOutput("both_11_12")
-        ),
-        plotOutput("both_11_12_plots"))
+      wellPanel(
+        h4("Males and Females Combined, Ages 11-12", align = "center"),
+        fluidRow(
+          column(6, 
+                   uiOutput("both_11_12")
+                 ),
+          column(6, 
+                 plotOutput("both_11_12_plots")
+          )))
     })
   }
   if (sex == "Males and females combined" & age == "13") {
     output$rates_13 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 13", align = "center"),
-          uiOutput("both_13")
-        ),
-        plotOutput("both_13_plots"))
+      wellPanel(
+        h4("Males and Females Combined, Ages 13", align = "center"),
+        fluidRow(
+          column(6, 
+                   uiOutput("both_13")
+                 ),
+          column(6, 
+                 plotOutput("both_13_plots")
+          )))
     })
   }
   
   if (sex == "Males and females seperately" & age == "9-10") {
     output$rates_9_10 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 9-10", align = "center"),
-          splitLayout(uiOutput("girls_9_10"), uiOutput("boys_9_10"))
-        ),
-        plotOutput("seperate_9_10_plots"))
+      wellPanel(
+      h4("Males and Females Seperately, Ages 9-10", align="center"),
+      fluidRow(
+        column(width = 6, 
+                  verticalLayout(
+                    h4("Females", align = "center"),
+                    uiOutput("girls_9_10"),
+                    br(),
+                    h4("Males", align = "center"),
+                    uiOutput("boys_9_10")
+                    )),
+        column(width = 6,
+               verticalLayout(
+                 br(),
+                 br(),
+               plotOutput("seperate_9_10_plots", height = "650px")))))
+      
     }) 
   }
   if (sex == "Males and females seperately" & age == "11-12") {
     output$rates_11_12 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 11-12", align = "center"),
-          splitLayout(uiOutput("girls_11_12"), uiOutput("boys_11_12"))
-        ),
-        plotOutput("seperate_11_12_plots"))
+      
+      wellPanel(
+        h4("Males and Females Seperately, Ages 11_12", align="center"),
+        fluidRow(
+          column(width = 6, 
+                 verticalLayout(
+                   h4("Females", align = "center"),
+                   uiOutput("girls_11_12"),
+                   br(),
+                   h4("Males", align = "center"),
+                   uiOutput("boys_11_12")
+                 )),
+          column(width = 6,
+                 verticalLayout(
+                   br(),br(),
+                 plotOutput("seperate_11_12_plots", height = "650px")))))
     }) 
   }
   if (sex == "Males and females seperately" & age == "13") {
     output$rates_13 <- renderUI({
-      splitLayout(
-        verticalLayout(
-          h4("Males and Females Combined, Ages 13", align = "center"),
-          splitLayout(uiOutput("girls_13"), uiOutput("boys_13"))
-        ),
-        plotOutput("seperate_13_plots"))
+      wellPanel(
+        h4("Males and Females Seperately, Age 13", align="center"),
+        fluidRow(
+          column(width = 6, 
+                 verticalLayout(
+                   h4("Females", align = "center"),
+                   uiOutput("girls_13"),
+                   br(),
+                   h4("Males", align = "center"),
+                   uiOutput("boys_13")
+                 )),
+          column(width = 6,
+                 verticalLayout(
+                   br(),br(),
+                 plotOutput("seperate_13_plots", height = "650px")))))
     }) 
   }
   
   # Define the table UI
-  output$both_9_10 <- renderUI({rHandsontableOutput("bothtable1", width = "200%")})
-  output$both_11_12 <- renderUI({rHandsontableOutput("bothtable2", width = "200%")})
-  output$both_13 <- renderUI({rHandsontableOutput("bothtable3", width = "200%")})
+  output$both_9_10 <- renderUI({rHandsontableOutput("bothtable1", width = "100%")})
+  output$both_11_12 <- renderUI({rHandsontableOutput("bothtable2", width = "100%")})
+  output$both_13 <- renderUI({rHandsontableOutput("bothtable3", width = "100%")})
   
   output$girls_9_10 <- renderUI({rHandsontableOutput("girlstable1", width = "100%")})
   output$girls_11_12 <- renderUI({rHandsontableOutput("girlstable2", width = "100%")})
@@ -8158,9 +8201,10 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   output$boys_13 <- renderUI({rHandsontableOutput("boystable3", width = "100%")})
   
   
+  
   # Render the tables      
   output$bothtable1 <- renderRHandsontable({
-    rhandsontable(bothage1, rowHeaders = NULL)%>%
+    rhandsontable(bothage1, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(bothage1),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8168,7 +8212,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })      
   output$bothtable2 <- renderRHandsontable({
-    rhandsontable(bothage2, rowHeaders = NULL)%>%
+    rhandsontable(bothage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(bothage2),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8176,7 +8220,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })      
   output$bothtable3 <- renderRHandsontable({
-    rhandsontable(bothage3, rowHeaders = NULL)%>%
+    rhandsontable(bothage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(bothage3),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8184,8 +8228,9 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })  
   
+  
   output$girlstable1 <- renderRHandsontable({
-    rhandsontable(girlsage1, rowHeaders = NULL)%>%
+    rhandsontable(girlsage1, rowHeaders = NULL, width = "200%", stretchH = "all") %>%
       hot_col(names(girlsage1),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8193,7 +8238,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })      
   output$girlstable2 <- renderRHandsontable({
-    rhandsontable(girlsage2, rowHeaders = NULL)%>%
+    rhandsontable(girlsage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(girlsage2),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8201,7 +8246,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })      
   output$girlstable3 <- renderRHandsontable({
-    rhandsontable(girlsage3, rowHeaders = NULL)%>%
+    rhandsontable(girlsage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(girlsage3),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8210,15 +8255,15 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   })     
   
   output$boystable1 <- renderRHandsontable({
-    rhandsontable(boysage1, rowHeaders = NULL)%>%
+    rhandsontable(boysage1, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(boysage1),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
                td.style.background = 'lightblue';
-               }") 
+               }")
   })      
   output$boystable2 <- renderRHandsontable({
-    rhandsontable(boysage2, rowHeaders = NULL)%>%
+    rhandsontable(boysage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(boysage2),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8226,7 +8271,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })      
   output$boystable3 <- renderRHandsontable({
-    rhandsontable(boysage3, rowHeaders = NULL)%>%
+    rhandsontable(boysage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
       hot_col(names(boysage3),  
               renderer = "function(instance, td, row, col, prop, value, cellProperties) {
                Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -8234,7 +8279,7 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
                }") 
   })     
   
-  
+
   # Figures
   if (sex == "Males and females combined") {
   output$both_9_10_plots <- renderPlot(monthlyFigure(hot_to_r(input$bothtable1)))
@@ -8242,32 +8287,31 @@ observeEvent(list(input$mu_ages, input$mu_sex, input$start_month), {
   output$both_13_plots <- renderPlot(monthlyFigure(hot_to_r(input$bothtable3)))
   }
   
-  renderFigures <- function(girls, boys, title) {
+  renderFigures <- function(girls, boys) {
     grid.arrange(arrangeGrob(
-      girls + theme(legend.position = "none") + labs(title = "Females"),
-      boys + theme(legend.position = "none") + labs(title = "Males"),
-      nrow = 2, top = title),
+      girls + theme(legend.position = "none", title = element_text(size = 10)) + labs(title = "Females"),
+      boys + theme(legend.position = "none", title = element_text(size = 10)) + labs(title = "Males"),
+      nrow = 2, heights = c(10,10)),
       getLegend(girls),
-      nrow=2, heights = c(10,1)
-    )
+      nrow=2, heights = c(20,1), 
+      top = textGrob("Monthly vaccination rates", gp = gpar(fontsize = 16)))
   }
-  
   output$seperate_9_10_plots <- renderPlot({
     girls <- monthlyFigure(hot_to_r(input$girlstable1))
     boys <- monthlyFigure(hot_to_r(input$boystable1))
-    renderFigures(girls, boys, "Males and females, ages 9-10")
+    renderFigures(girls, boys)
   })
   
   output$seperate_11_12_plots <- renderPlot({
     girls <- monthlyFigure(hot_to_r(input$girlstable2))
     boys <- monthlyFigure(hot_to_r(input$boystable2))
-    renderFigures(girls, boys, "Males and females, ages 11-12")
+    renderFigures(girls, boys)
   })
   
   output$seperate_13_plots <- renderPlot({
     girls <- monthlyFigure(hot_to_r(input$girlstable3))
     boys <- monthlyFigure(hot_to_r(input$boystable3))
-    renderFigures(girls, boys, "Males and females, age 13")
+    renderFigures(girls, boys)
   })
   
 })

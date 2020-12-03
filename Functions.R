@@ -2328,7 +2328,7 @@ monthlyFigure <- function(df) {
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
-    labs(title = myTitle) + 
+    labs(title = "Monthly vaccination rates") + 
     theme(legend.position = "bottom",
           legend.title = element_blank(),
           axis.title = element_blank(),
