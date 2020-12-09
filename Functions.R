@@ -53,7 +53,8 @@ firstDB <- function(loc, filename, username){
     Q14_1 = as.character(""),
     Q14_2 = as.character(""),
     Q14_3 = as.character(""),
-    Q14_other = as.character("")
+    Q14_other = as.character(""),
+    DemoComments = as.character("")
   )
   
   
@@ -106,7 +107,8 @@ firstDB <- function(loc, filename, username){
     Q26_7 = as.character(""),
     Q26_8 = as.character(""),
     Q26_9 = as.character(""),
-    Q26_other = as.character("")
+    Q26_other = as.character(""),
+    SystemsComments = as.character("")
   )
   
   lst$savedRates <- data.frame(
@@ -172,7 +174,8 @@ firstDB <- function(loc, filename, username){
     Q32_other = as.character(""),
     Q33 = as.character(""),
     Q33_other = as.character(""),
-    Q34 = as.character("")
+    Q34 = as.character(""),
+    RatesComments = as.character("")
   )
   
   lst$savedActivities <- data.frame(
@@ -245,7 +248,8 @@ firstDB <- function(loc, filename, username){
     ppl7 = as.character(""),
     ppl8 = as.character(""),
     ppl9 = as.character(""),
-    ppl10 = as.character("")
+    ppl10 = as.character(""),
+    ActivitiesComments = as.character("")
   )
   
   lst$followupRates <- data.frame(
@@ -299,7 +303,8 @@ firstDB <- function(loc, filename, username){
     BothFUAge3_dose1 = as.numeric(NA),
     BothFUAge3_dose2 = as.numeric(NA),
     BothFUAge3_mening = as.numeric(NA),
-    BothFUAge3_tdap = as.numeric(NA)
+    BothFUAge3_tdap = as.numeric(NA),
+    FollowupRatesComments = as.character("")
   )
   
   lst$additionalInfo <- data.frame(
@@ -356,7 +361,8 @@ firstDB <- function(loc, filename, username){
     Q16FU = as.character(""),
     Q17FU = as.character(""),
     Q18FU = as.character(""),
-    Q18FU_more = as.character("")
+    Q18FU_more = as.character(""),
+    AdditionalInfoComments = as.character("")
   )
   
   
@@ -1418,15 +1424,14 @@ figure3 <- function(dat){
 
 
 # Figure 4 - compare the users HPV results to the rest of the study
-figure4 <- function(dat=df, 
-                    myData=allData,
+figure4 <- function(dat, 
+                    myData,
                     region = "All regions combined",
                     system = "All system types") {
   
-  
-  
+
   # Set my titles based on region and system
-  title1 <- df[["HealthSystem"]]
+  title1 <- dat[["HealthSystem"]]
   title2 <- ifelse(region == "All regions combined" & system == "All system types",
                    "All regions and health system types combined", ifelse(
                      region == "All regions combined" & system != "All system types", 

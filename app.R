@@ -38,7 +38,6 @@ logout <- "https://interventionsandimplementation.shinyapps.io/HPV_BDC/__logout_
 source("Functions.R")
 
 
-
 # Ui ----------------------------------------------------------------------
 
 ui = dashboardPage(
@@ -280,7 +279,7 @@ ui = dashboardPage(
             h3("System Background"),
             helpText(
               "Now, you'll provide information on the data systems your health system uses.
-                                                          Please complete this information to the best of your knowledge."
+               Please complete this information to the best of your knowledge."
             ),
             HTML("<br>"),
             verticalLayout(
@@ -1100,8 +1099,6 @@ ui = dashboardPage(
 
 # Server ------------------------------------------------------------------
 
-
-
 server <- function(input, output, session) {
   
   
@@ -1113,7 +1110,7 @@ server <- function(input, output, session) {
   
   # User directory
   shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
-  #shortUser <- "bcarter6"
+  shortUser <- "bcarter6"
   # Define the endpoint and container
   # One primary containers: DataSrc
   endpoint <- storage_endpoint(
@@ -1131,6 +1128,8 @@ server <- function(input, output, session) {
   #  This will initialize the database from an initial null database
   if (!userFilename %in% baseFiles)  firstDB(DataSrc, userFilename, session$user)
 
+
+  
   
   # Home page ---------------------------------------------------------------
   
@@ -1166,6 +1165,8 @@ server <- function(input, output, session) {
   
 
   demographics <- getRecentData(DataSrc, userFilename, "demographics")
+  
+  DemoComments <- demographics$DemoComments
 
     
     foo11 <- c(demographics$Q11_1, demographics$Q11_2, demographics$Q11_3, demographics$Q11_4, demographics$Q11_5)
@@ -1640,7 +1641,7 @@ server <- function(input, output, session) {
         Q12,  Q12_1, Q12_2, Q12_3, Q12_4,  Q12_5,
         Q12_6, Q12_other, Q13, Q13_amount,
         Q13_source,  Q13_date, Q13_length,
-        Q14, Q14_1, Q14_2, Q14_3, Q14_other)
+        Q14, Q14_1, Q14_2, Q14_3, Q14_other, DemoComments=DemoComments)
       
       updateDB(loc = DataSrc, filename = userFilename, "demographics", demographics)
       updateTabsetPanel(session, "tabbox_baseline", selected = "p1_data")
@@ -1669,6 +1670,8 @@ server <- function(input, output, session) {
   
   systems <- getRecentData(DataSrc, userFilename, "systems")
 
+  SystemsComments <- systems$SystemsComments
+  
     # Multi group input vectors
     foo17 <- with(systems, c(Q17_1, Q17_2, Q17_3, Q17_4, Q17_5))
     foo17 <- foo17[!is.na(foo17)]
@@ -2045,7 +2048,7 @@ server <- function(input, output, session) {
                            Q18, Q19, Q19_1, Q19_2, Q19_3, Q19_4, Q19_5, Q20, Q20_notes, 
                            Q20_orders, Q20_other, Q21, Q21_text, Q22, Q22_notes, Q23, Q23_notes, 
                            Q24, Q24_years, Q25, Q25_1, Q25_2, Q25_3, Q25_4, Q25_5, Q25_other, Q26, 
-                           Q26_1, Q26_2, Q26_3, Q26_4, Q26_5, Q26_6, Q26_7, Q26_8, Q26_9, Q26_other)
+                           Q26_1, Q26_2, Q26_3, Q26_4, Q26_5, Q26_6, Q26_7, Q26_8, Q26_9, Q26_other, SystemsComments=SystemsComments)
     updateDB(DataSrc, userFilename, "systems", systems)
     updateTabsetPanel(session, "tabbox_baseline", selected = "p1_rates")
     #}
@@ -2071,6 +2074,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
   # Rates page  -------------------------------------------------------------
   
   savedRates <- getRecentData(DataSrc, userFilename, "savedRates")
+    RatesComments <- savedRates$RatesComments
     
     # Checkbox groups
     foo28 <- with(savedRates, c(Q28_1, Q28_2, Q28_3, Q28_4))
@@ -2153,8 +2157,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
                     "No, we will have combined rate data"),
         selected = savedRates$Q29)
     })
-    
-    
+
+
     # This is how you get rid of the boxes
     observe({
       x <- input$Q28
@@ -2167,26 +2171,15 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
       if (!"13" %in% x) {
         output$brates_13 <- renderUI(NULL)
       }
-      
+
     })
-    
+
     # Create the ages 9-10 boxes
     observeEvent(list(input$Q28, input$Q29), {
       validate(need(input$Q28, ""))
       validate(need(input$Q29, ""))
       
-      
-      
-      if (is.na(input$Q28)) {
-        output$brates_9_10 <- NULL
-        output$brates_11_12 <- NULL
-        output$brates_13 <- NULL
-      }
-      
-      
-      
-      
-      
+
       # Boys and girls - ages 9-10
       if ("9-10" %in% input$Q28 &
           input$Q29 == "Yes, we'll report separate data for male and female patients") {
@@ -2221,7 +2214,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_f9_total"),
+            uiOutput("error_f9_total"),
+            #textOutput("error_f9_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2239,7 +2233,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge1_dose1_rate")
             ),
-            textOutput("error_f9_gt1"),
+            uiOutput("error_f9_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2255,8 +2249,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge1_dose2_rate")
             ),
-            textOutput("error_f9_2plus"),
-            textOutput("error_f9a_2plus")
+            uiOutput("error_f9_2plus"),
+            uiOutput("error_f9a_2plus")
           ),
           box( # Men aged 9-10
             h3("Males, ages 9-10"),
@@ -2284,7 +2278,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_m9_total"),
+            uiOutput("error_m9_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2302,7 +2296,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge1_dose1_rate")
             ),
-            textOutput("error_m9_gt1"),
+            uiOutput("error_m9_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2318,10 +2312,41 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge1_dose2_rate")
             ),
-            textOutput("error_m9_2plus"),
-            textOutput("error_m9a_2plus")
+            uiOutput("error_m9_2plus"),
+            uiOutput("error_m9a_2plus")
           )
             )) # end split and veritical layout
+        })
+        
+        output$error_f9_total <- renderUI({
+          if (is.na(input$FemAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_f9_gt1 <- renderUI({
+          if (is.na(input$FemAge1_dose1) | is.na(input$FemAge1_total)) {
+            return(NULL)
+          } else if (input$FemAge1_dose1 > input$FemAge1_total) {
+              helpText("This number can't be greater than the number of patients seen",
+                       style = "color:red")
+            }
+        })
+        output$error_f9_2plus <- renderUI({if (is.na(input$FemAge1_dose2) | is.na(input$FemAge1_total)) {
+          return(NULL)
+        } else if (input$FemAge1_dose2 > input$FemAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f9a_2plus <- renderUI({
+          if (is.na(input$FemAge1_dose2) | is.na(input$FemAge1_dose1)) {
+          return(NULL)
+        } else if (input$FemAge1_dose2 >= input$FemAge1_dose1){
+              helpText("This number can't be greater than the total number of patients who received the first dose",
+                       style = "color:red")
+        }
         })
         output$FemAge1_dose1_rate <- renderText({
           validate(need(input$FemAge1_total, ""))
@@ -2351,14 +2376,37 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             return(rate)
           }
         })
-        observe({
-          output$error_f9_total <- renderText({
-            validate(need(input$FemAge1_total, "This number is required"),
-                     errorClass = "red_warnings")
-          })
+
+        output$error_m9_total <- renderUI({
+          if (is.na(input$MenAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
         })
-        
-       
+        output$error_m9_gt1 <- renderUI({
+          if (is.na(input$MenAge1_dose1) | is.na(input$MenAge1_total)) {
+            return(NULL)
+          } else if (input$MenAge1_dose1 > input$MenAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m9_2plus <- renderUI({if (is.na(input$MenAge1_dose2) | is.na(input$MenAge1_total)) {
+          return(NULL)
+        } else if (input$MenAge1_dose2 > input$MenAge1_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m9a_2plus <- renderUI({
+          if (is.na(input$MenAge1_dose2) | is.na(input$MenAge1_dose1)) {
+            return(NULL)
+          } else if (input$MenAge1_dose2 >= input$MenAge1_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
         output$MenAge1_dose1_rate <- renderText({
           validate(need(input$MenAge1_total, ""))
           if (is.na(input$MenAge1_dose1)) {
@@ -2388,9 +2436,6 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
       } 
-      else if (!"9-10" %in% input$Q28) {
-        output$brates_9_10 <- NULL
-      }
       
       # Ages 9-10, combined
       if ("9-10" %in% input$Q28 &
@@ -2421,7 +2466,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_9_total"),
+            uiOutput("error_9_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2439,7 +2484,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge1_dose1_rate")
             ),
-            textOutput("error_9_gt1"),
+            uiOutput("error_9_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2454,8 +2499,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge1_dose2_rate")
             ),
-            textOutput("error_9_2plus"),
-            textOutput("error_9a_2plus")
+            uiOutput("error_9_2plus"),
+            uiOutput("error_9a_2plus")
           )
         })
         output$BothAge1_dose1_rate <- renderText({
@@ -2486,11 +2531,39 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             return(rate)
           }
         })
+        
+        output$error_9_total <- renderUI({
+          if (is.na(input$BothAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_9_gt1 <- renderUI({
+          if (is.na(input$BothAge1_dose1) | is.na(input$BothAge1_total)) {
+            return(NULL)
+          } else if (input$BothAge1_dose1 > input$BothAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_9_2plus <- renderUI({if (is.na(input$BothAge1_dose2) | is.na(input$BothAge1_total)) {
+          return(NULL)
+        } else if (input$BothAge1_dose2 > input$BothAge1_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_9a_2plus <- renderUI({
+          if (is.na(input$BothAge1_dose2) | is.na(input$BothAge1_dose1)) {
+            return(NULL)
+          } else if (input$BothAge1_dose2 >= input$BothAge1_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        
       }
-      else if (!"9-10" %in% input$Q28) {
-        output$brates_9_10 <- NULL
-      }
-      
       
     }) # end the 9-10 observation
     
@@ -2532,7 +2605,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_f11_total"),
+            uiOutput("error_f11_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2550,7 +2623,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge2_dose1_rate")
             ),
-            textOutput("error_f11_gt1"),
+            uiOutput("error_f11_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2566,8 +2639,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge2_dose2_rate")
             ),
-            textOutput("error_f11_2plus"),
-            textOutput("error_f11a_2plus"),
+            uiOutput("error_f11_2plus"),
+            uiOutput("error_f11a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2581,7 +2654,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge2_mening_rate")
             ),
-            textOutput("error_f11_mening"),
+            uiOutput("error_f11_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2595,7 +2668,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge2_tdap_rate")
             ),
-            textOutput("error_f11_Tdap"),
+            uiOutput("error_f11_Tdap"),
           ),
           box( # males aged 11-12
             h3("Males, ages 11-12"),
@@ -2623,7 +2696,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_m11_total"),
+            uiOutput("error_m11_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2641,7 +2714,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge2_dose1_rate")
             ),
-            textOutput("error_m11_gt1"),
+            uiOutput("error_m11_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2657,8 +2730,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge2_dose2_rate")
             ),
-            textOutput("error_m11_2plus"),
-            textOutput("error_m11a_2plus"),
+            uiOutput("error_m11_2plus"),
+            uiOutput("error_m11a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2672,7 +2745,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge2_mening_rate")
             ),
-            textOutput("error_m11_mening"),
+            uiOutput("error_m11_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2686,11 +2759,10 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge2_tdap_rate")
             ),
-            textOutput("error_m11_Tdap"),
+            uiOutput("error_m11_Tdap"),
           )
             )) # end split and vertical layout
         })
-        
         output$FemAge2_dose1_rate <- renderText({
           validate(need(input$FemAge2_total, ""))
           if (is.na(input$FemAge2_dose1)) {
@@ -2744,7 +2816,52 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
         
-        
+        output$error_f11_total <- renderUI({
+          if (is.na(input$FemAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_f11_gt1 <- renderUI({
+          if (is.na(input$FemAge2_dose1) | is.na(input$FemAge2_total)) {
+            return(NULL)
+          } else if (input$FemAge2_dose1 > input$FemAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_2plus <- renderUI({if (is.na(input$FemAge2_dose2) | is.na(input$FemAge2_total)) {
+          return(NULL)
+        } else if (input$FemAge2_dose2 > input$FemAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_f11a_2plus <- renderUI({
+          if (is.na(input$FemAge2_dose2) | is.na(input$FemAge2_dose1)) {
+            return(NULL)
+          } else if (input$FemAge2_dose2 >= input$FemAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_mening <- renderUI({
+          if (is.na(input$FemAge2_mening) | is.na(input$FemAge2_total)) {
+            return(NULL)
+          } else if (input$FemAge2_mening > input$FemAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_Tdap <- renderUI({
+          if (is.na(input$FemAge2_tdap) | is.na(input$FemAge2_total)) {
+            return(NULL)
+          } else if (input$FemAge2_tdap > input$FemAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
         
         output$MenAge2_dose1_rate <- renderText({
           validate(need(input$MenAge2_total, ""))
@@ -2785,7 +2902,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
-        output$MenAge2_tdap_rate <- renderText({
+        output$MenAge2_Tdap_rate <- renderText({
           validate(need(input$MenAge2_total, ""))
           if (is.na(input$MenAge2_tdap)) {
             return(NULL)
@@ -2799,10 +2916,55 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
         
+        output$error_m11_total <- renderUI({
+          if (is.na(input$MenAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_m11_gt1 <- renderUI({
+          if (is.na(input$MenAge2_dose1) | is.na(input$MenAge2_total)) {
+            return(NULL)
+          } else if (input$MenAge2_dose1 > input$MenAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_2plus <- renderUI({if (is.na(input$MenAge2_dose2) | is.na(input$MenAge2_total)) {
+          return(NULL)
+        } else if (input$MenAge2_dose2 > input$MenAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m11a_2plus <- renderUI({
+          if (is.na(input$MenAge2_dose2) | is.na(input$MenAge2_dose1)) {
+            return(NULL)
+          } else if (input$MenAge2_dose2 >= input$MenAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_mening <- renderUI({
+          if (is.na(input$MenAge2_mening) | is.na(input$MenAge2_total)) {
+            return(NULL)
+          } else if (input$MenAge2_mening > input$MenAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_Tdap <- renderUI({
+          if (is.na(input$MenAge2_tdap) | is.na(input$MenAge2_total)) {
+            return(NULL)
+          } else if (input$MenAge2_tdap > input$MenAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
       }
-      else if (!"11-12" %in% input$Q28) {
-        output$brates_11_12 <- NULL
-      }
+
       
       # Ages 11-12 - boys and girls combined
       if ("11-12" %in% input$Q28 &
@@ -2832,7 +2994,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_11_total"),
+            uiOutput("error_11_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -2850,7 +3012,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge2_dose1_rate")
             ),
-            textOutput("error_11_gt1"),
+            uiOutput("error_11_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -2866,8 +3028,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge2_dose2_rate")
             ),
-            textOutput("error_11_2plus"),
-            textOutput("error_11a_2plus"),
+            uiOutput("error_11_2plus"),
+            uiOutput("error_11a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2881,7 +3043,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge2_mening_rate")
             ),
-            textOutput("error_11_mening"),
+            uiOutput("error_11_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -2895,7 +3057,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge2_tdap_rate")
             ),
-            textOutput("error_11_Tdap"),
+            uiOutput("error_11_Tdap"),
           )
         })
         output$BothAge2_dose1_rate <- renderText({
@@ -2950,12 +3112,58 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+
+        output$error_11_total <- renderUI({
+          if (is.na(input$BothAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_11_gt1 <- renderUI({
+          if (is.na(input$BothAge2_dose1) | is.na(input$BothAge2_total)) {
+            return(NULL)
+          } else if (input$BothAge2_dose1 > input$BothAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_11_2plus <- renderUI({if (is.na(input$BothAge2_dose2) | is.na(input$BothAge2_total)) {
+          return(NULL)
+        } else if (input$BothAge2_dose2 > input$BothAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_11a_2plus <- renderUI({
+          if (is.na(input$BothAge2_dose2) | is.na(input$BothAge2_dose1)) {
+            return(NULL)
+          } else if (input$BothAge2_dose2 >= input$BothAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_11_mening <- renderUI({
+          if (is.na(input$BothAge2_mening) | is.na(input$BothAge2_total)) {
+            return(NULL)
+          } else if (input$BothAge2_mening > input$BothAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_11_Tdap <- renderUI({
+          if (is.na(input$BothAge2_tdap) | is.na(input$BothAge2_total)) {
+            return(NULL)
+          } else if (input$BothAge2_tdap > input$BothAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
+        
       }
-      else if (!"11-12" %in% input$Q28) {
-        output$brates_11_12 <- NULL
-      }
+      
     }) # end the 11-12 observation
-    
     
     # Age 13 boxes
     observeEvent(list(input$Q28, input$Q29), {
@@ -2995,7 +3203,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_f13_total"),
+            uiOutput("error_f13_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -3013,7 +3221,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge3_dose1_rate")
             ),
-            textOutput("error_f13_gt1"),
+            uiOutput("error_f13_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -3029,8 +3237,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge3_dose2_rate")
             ),
-            textOutput("error_f13_2plus"),
-            textOutput("error_f13a_2plus"),
+            uiOutput("error_f13_2plus"),
+            uiOutput("error_f13a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3044,7 +3252,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge3_mening_rate")
             ),
-            textOutput("error_f13_mening"),
+            uiOutput("error_f13_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3058,7 +3266,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemAge3_tdap_rate")
             ),
-            textOutput("error_f13_Tdap"),
+            uiOutput("error_f13_Tdap"),
           ),
           box( # boys aged 13
             h3("Males, age 13"),
@@ -3086,7 +3294,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_m13_total"),
+            uiOutput("error_m13_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -3104,7 +3312,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge3_dose1_rate")
             ),
-            textOutput("error_m13_gt1"),
+            uiOutput("error_m13_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -3120,8 +3328,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge3_dose2_rate")
             ),
-            textOutput("error_m13_2plus"),
-            textOutput("error_m13a_2plus"),
+            uiOutput("error_m13_2plus"),
+            uiOutput("error_m13a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3135,7 +3343,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge3_mening_rate")
             ),
-            textOutput("error_m13_mening"),
+            uiOutput("error_m13_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3149,7 +3357,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenAge3_tdap_rate")
             ),
-            textOutput("error_m13_Tdap"),
+            uiOutput("error_m13_Tdap"),
           )
             ))
         })
@@ -3192,7 +3400,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
-        output$FemAge3_tdap_rate <- renderText({
+        output$FemAge3_Tdap_rate <- renderText({
           validate(need(input$FemAge3_total, ""))
           if (is.na(input$FemAge3_tdap)) {
             return(NULL)
@@ -3203,6 +3411,53 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             rate <- format(round(rate, 1), nsmall = 1)
             rate <-
               paste0(rate, "% vaccination rate in this age group")
+          }
+        })
+
+        output$error_f13_total <- renderUI({
+          if (is.na(input$FemAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_f13_gt1 <- renderUI({
+          if (is.na(input$FemAge3_dose1) | is.na(input$FemAge3_total)) {
+            return(NULL)
+          } else if (input$FemAge3_dose1 > input$FemAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_2plus <- renderUI({if (is.na(input$FemAge3_dose2) | is.na(input$FemAge3_total)) {
+          return(NULL)
+        } else if (input$FemAge3_dose2 > input$FemAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_f13a_2plus <- renderUI({
+          if (is.na(input$FemAge3_dose2) | is.na(input$FemAge3_dose1)) {
+            return(NULL)
+          } else if (input$FemAge3_dose2 >= input$FemAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_mening <- renderUI({
+          if (is.na(input$FemAge3_mening) | is.na(input$FemAge3_total)) {
+            return(NULL)
+          } else if (input$FemAge3_mening > input$FemAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_Tdap <- renderUI({
+          if (is.na(input$FemAge3_tdap) | is.na(input$FemAge3_total)) {
+            return(NULL)
+          } else if (input$FemAge3_tdap > input$FemAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
           }
         })
         
@@ -3259,11 +3514,59 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+        
+        
+        
+        
+        output$error_m13_total <- renderUI({
+          if (is.na(input$MenAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_m13_gt1 <- renderUI({
+          if (is.na(input$MenAge3_dose1) | is.na(input$MenAge3_total)) {
+            return(NULL)
+          } else if (input$MenAge3_dose1 > input$MenAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_2plus <- renderUI({if (is.na(input$MenAge3_dose2) | is.na(input$MenAge3_total)) {
+          return(NULL)
+        } else if (input$MenAge3_dose2 > input$MenAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m13a_2plus <- renderUI({
+          if (is.na(input$MenAge3_dose2) | is.na(input$MenAge3_dose1)) {
+            return(NULL)
+          } else if (input$MenAge3_dose2 >= input$MenAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_mening <- renderUI({
+          if (is.na(input$MenAge3_mening) | is.na(input$MenAge3_total)) {
+            return(NULL)
+          } else if (input$MenAge3_mening > input$MenAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_Tdap <- renderUI({
+          if (is.na(input$MenAge3_tdap) | is.na(input$MenAge3_total)) {
+            return(NULL)
+          } else if (input$MenAge3_tdap > input$MenAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
       }
-      else if (!("13" %in% input$Q28)) {
-        output$brates_13<- NULL
-      }
-      
+
       # Boys and girls combined - age 13
       if ("13" %in% input$Q28 &
           input$Q29 == "No, we will have combined rate data") {
@@ -3292,7 +3595,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_13_total"),
+            uiOutput("error_13_total"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -3310,7 +3613,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge3_dose1_rate")
             ),
-            textOutput("error_13_gt1"),
+            uiOutput("error_13_gt1"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -3326,8 +3629,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge3_dose2_rate")
             ),
-            textOutput("error_13_2plus"),
-            textOutput("error_13a_2plus"),
+            uiOutput("error_13_2plus"),
+            uiOutput("error_13a_2plus"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3341,7 +3644,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge3_mening_rate")
             ),
-            textOutput("error_13_mening"),
+            uiOutput("error_13_mening"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -3355,7 +3658,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothAge3_tdap_rate")
             ),
-            textOutput("error_13_Tdap"),
+            uiOutput("error_13_Tdap"),
           )
         })
         output$BothAge3_dose1_rate <- renderText({
@@ -3410,10 +3713,55 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
-      }
-        else if (!("13" %in% input$Q28)) {
-          output$brates_13<- NULL
+        
+        output$error_13_total <- renderUI({
+          if (is.na(input$BothAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_13_gt1 <- renderUI({
+          if (is.na(input$BothAge3_dose1) | is.na(input$BothAge3_total)) {
+            return(NULL)
+          } else if (input$BothAge3_dose1 > input$BothAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_13_2plus <- renderUI({if (is.na(input$BothAge3_dose2) | is.na(input$BothAge3_total)) {
+          return(NULL)
+        } else if (input$BothAge3_dose2 > input$BothAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
         }
+        })
+        output$error_13a_2plus <- renderUI({
+          if (is.na(input$BothAge3_dose2) | is.na(input$BothAge3_dose1)) {
+            return(NULL)
+          } else if (input$BothAge3_dose2 >= input$BothAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_13_mening <- renderUI({
+          if (is.na(input$BothAge3_mening) | is.na(input$BothAge3_total)) {
+            return(NULL)
+          } else if (input$BothAge3_mening > input$BothAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_13_Tdap <- renderUI({
+          if (is.na(input$BothAge3_tdap) | is.na(input$BothAge3_total)) {
+            return(NULL)
+          } else if (input$BothAge3_tdap > input$BothAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
+      }
     }) # end the 13 observation
     
     output$Q30 <- renderUI({
@@ -3525,670 +3873,6 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
   
   
   
-  # Error warnings for the rate tables
-  
-  # Females (age 9)
-  observe({
-    output$error_f9_total <- renderText({
-      validate(need(input$FemAge1_total, "This number is required"),
-               errorClass = "red_warnings")
-    })
-  })
-  observe({
-    output$error_f9_gt1 <- renderText({
-      if (is.na(input$FemAge1_dose1) | is.na(input$FemAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge1_dose1 <= input$FemAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f9_2plus <- renderText({
-      if (is.na(input$FemAge1_dose2) | is.na(input$FemAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge1_dose2 <= input$FemAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f9a_2plus <- renderText({
-      if (is.na(input$FemAge1_dose2) | is.na(input$FemAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge1_dose2 <= input$FemAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Males
-  observe({
-    output$error_m9_total <- renderText({
-      validate(need(input$MenAge1_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m9_gt1 <- renderText({
-      if (is.na(input$MenAge1_dose1) | is.na(input$MenAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge1_dose1 <= input$MenAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m9_2plus <- renderText({
-      if (is.na(input$MenAge1_dose2) | is.na(input$MenAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge1_dose2 <= input$MenAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m9a_2plus <- renderText({
-      if (is.na(input$MenAge1_dose2) | is.na(input$MenAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge1_dose2 <= input$MenAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Combined (males and females)
-  observe({
-    output$error_9_total <- renderText({
-      validate(need(input$BothAge1_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_9_gt1 <- renderText({
-      if (is.na(input$BothAge1_dose1) | is.na(input$BothAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge1_dose1 <= input$BothAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_9_2plus <- renderText({
-      if (is.na(input$BothAge1_dose2) | is.na(input$BothAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge1_dose2 <= input$BothAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_9a_2plus <- renderText({
-      if (is.na(input$BothAge1_dose2) | is.na(input$BothAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge1_dose2 <= input$BothAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  
-  # Aged 11-12 warnings ------------------------------- #
-  
-  # Females
-  observe({
-    output$error_f11_total <- renderText({
-      validate(need(input$FemAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the female rates
-    })
-  })
-  observe({
-    output$error_f11_gt1 <- renderText({
-      if (is.na(input$FemAge2_dose1) | is.na(input$FemAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge2_dose1 <= input$FemAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_2plus <- renderText({
-      if (is.na(input$FemAge2_dose2) | is.na(input$FemAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge2_dose2 <= input$FemAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11a_2plus <- renderText({
-      if (is.na(input$FemAge2_dose2) | is.na(input$FemAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge2_dose2 <= input$FemAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_mening <- renderText({
-      if (is.na(input$FemAge2_mening) | is.na(input$FemAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge2_mening <= input$FemAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_Tdap <- renderText({
-      if (is.na(input$FemAge2_tdap) | is.na(input$FemAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge2_tdap <= input$FemAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Males
-  observe({
-    output$error_m11_total <- renderText({
-      validate(need(input$MenAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m11_gt1 <- renderText({
-      if (is.na(input$MenAge2_dose1) | is.na(input$MenAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge2_dose1 <= input$MenAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_2plus <- renderText({
-      if (is.na(input$MenAge2_dose2) | is.na(input$MenAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge2_dose2 <= input$MenAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11a_2plus <- renderText({
-      if (is.na(input$MenAge2_dose2) | is.na(input$MenAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge2_dose2 <= input$MenAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_mening <- renderText({
-      if (is.na(input$MenAge2_mening) | is.na(input$MenAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge2_mening <= input$MenAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_Tdap <- renderText({
-      if (is.na(input$MenAge2_tdap) | is.na(input$MenAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge2_tdap <= input$MenAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Combined (males and females)
-  observe({
-    output$error_11_total <- renderText({
-      validate(need(input$BothAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_11_gt1 <- renderText({
-      if (is.na(input$BothAge2_dose1) | is.na(input$BothAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge2_dose1 <= input$BothAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_2plus <- renderText({
-      if (is.na(input$BothAge2_dose2) | is.na(input$BothAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge2_dose2 <= input$BothAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11a_2plus <- renderText({
-      if (is.na(input$BothAge2_dose2) | is.na(input$BothAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge2_dose2 <= input$BothAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_mening <- renderText({
-      if (is.na(input$BothAge2_mening) | is.na(input$BothAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge2_mening <= input$BothAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_Tdap <- renderText({
-      if (is.na(input$BothAge2_tdap) | is.na(input$BothAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge2_tdap <= input$BothAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  
-  # Aged 13 warnings ------------------------------- #
-  
-  # Females
-  observe({
-    output$error_f13_total <- renderText({
-      validate(need(input$FemAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the female rates
-    })
-  })
-  observe({
-    output$error_f13_gt1 <- renderText({
-      if (is.na(input$FemAge3_dose1) | is.na(input$FemAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge3_dose1 <= input$FemAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_2plus <- renderText({
-      if (is.na(input$FemAge3_dose2) | is.na(input$FemAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge3_dose2 <= input$FemAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13a_2plus <- renderText({
-      if (is.na(input$FemAge3_dose2) | is.na(input$FemAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge3_dose2 <= input$FemAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_mening <- renderText({
-      if (is.na(input$FemAge3_mening) | is.na(input$FemAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge3_mening <= input$FemAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_Tdap <- renderText({
-      if (is.na(input$FemAge3_tdap) | is.na(input$FemAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemAge3_tdap <= input$FemAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Males
-  observe({
-    output$error_m13_total <- renderText({
-      validate(need(input$MenAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m13_gt1 <- renderText({
-      if (is.na(input$MenAge3_dose1) | is.na(input$MenAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge3_dose1 <= input$MenAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_2plus <- renderText({
-      if (is.na(input$MenAge3_dose2) | is.na(input$MenAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge3_dose2 <= input$MenAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13a_2plus <- renderText({
-      if (is.na(input$MenAge3_dose2) | is.na(input$MenAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge3_dose2 <= input$MenAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_mening <- renderText({
-      if (is.na(input$MenAge3_mening) | is.na(input$MenAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge3_mening <= input$MenAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_Tdap <- renderText({
-      if (is.na(input$MenAge3_tdap) | is.na(input$MenAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenAge3_tdap <= input$MenAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Combined (males and females)
-  observe({
-    output$error_13_total <- renderText({
-      validate(need(input$BothAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_13_gt1 <- renderText({
-      if (is.na(input$BothAge3_dose1) | is.na(input$BothAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge3_dose1 <= input$BothAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_2plus <- renderText({
-      if (is.na(input$BothAge3_dose2) | is.na(input$BothAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge3_dose2 <= input$BothAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13a_2plus <- renderText({
-      if (is.na(input$BothAge3_dose2) | is.na(input$BothAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge3_dose2 <= input$BothAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_mening <- renderText({
-      if (is.na(input$BothAge3_mening) | is.na(input$BothAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge3_mening <= input$BothAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_Tdap <- renderText({
-      if (is.na(input$BothAge3_tdap) | is.na(input$BothAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothAge3_tdap <= input$BothAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
   
   # WHEN HIT BUTTON, SAVE DATA AND MOVE TO FINAL PAGE
   observeEvent(input$button_rates, {
@@ -4332,7 +4016,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
       # Rates - numbers
       baselineRates,
       Q31, Q31_other, Q32, Q32_details, Q32_details1, Q32_details2, Q32_details3, Q32_details4,
-      Q32_other, Q33, Q33_other, Q34)
+      Q32_other, Q33, Q33_other, Q34, RatesComments=RatesComments)
     
     updateDB(DataSrc, userFilename, "savedRates", savedRates) 
     updateTabsetPanel(session, "tabbox_baseline", selected = "p1_plan")
@@ -4360,6 +4044,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
   
     savedActivities <- getRecentData(DataSrc, userFilename, "savedActivities")
   
+    ActivitiesComments <- savedActivities$ActivitiesComments
 
     
     foo35 <- with(savedActivities, c(Q35_1, Q35_2, Q35_3, Q35_4))
@@ -4735,7 +4420,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
       Q38, Q38_1, Q38_2, Q38_3, Q38_4, Q38_5,
       Q38_6, Q38_7, Q38_8, Q38_9, Q38_other,
       Q39, Q39_1, Q39_2, Q39_3, Q39_4, Q39_5, Q39_other,
-      Q40, Q41, Q42, activityGrid)
+      Q40, Q41, Q42, activityGrid, ActivitiesComments=ActivitiesComments)
     
     updateDB(DataSrc, userFilename, "savedActivities", savedActivities)
     updateTabsetPanel(session, "tabbox_baseline", selected = "p1_submission")
@@ -4839,6 +4524,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
   
   
   followupRates <- getRecentData(DataSrc, userFilename, "followupRates")
+  
+  FollowupRatesComments <- followupRates$FollowupRatesComments
 
 
     foo2FU <- with(followupRates, c(Q2FU_1, Q2FU_2, Q2FU_3, Q2FU_4))
@@ -4966,7 +4653,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_f9_total_fwup"),
+            uiOutput("error_f9_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -4984,7 +4671,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge1_dose1_rate")
             ),
-            textOutput("error_f9_gt1_fwup"),
+            uiOutput("error_f9_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5000,8 +4687,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge1_dose2_rate")
             ),
-            textOutput("error_f9_2plus_fwup_fwup"),
-            textOutput("error_f9a_2plus_fwup_fwup")
+            uiOutput("error_f9_2plus_fwup"),
+            uiOutput("error_f9a_2plus_fwup")
           ),
           box( #boys aged 9-10
             h3("Males, ages 9-10"),
@@ -5029,7 +4716,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_m9_total_fwup"),
+            uiOutput("error_m9_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5047,7 +4734,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge1_dose1_rate")
             ),
-            textOutput("error_m9_gt1_fwup"),
+            uiOutput("error_m9_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5063,8 +4750,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge1_dose2_rate")
             ),
-            textOutput("error_m9_2plus_fwup"),
-            textOutput("error_m9a_2plus_fwup")
+            uiOutput("error_m9_2plus_fwup"),
+            uiOutput("error_m9a_2plus_fwup")
           )
             )) # end split and vertical layout
         })
@@ -5096,13 +4783,36 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             return(rate)
           }
         })
-        observe({
-          output$error_f9_total_fwup <- renderText({
-            validate(need(input$FemFUAge1_total, "This number is required"),
-                     errorClass = "red_warnings")
-          })
+        output$error_f9_total_fwup <- renderUI({
+          if (is.na(input$FemFUAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
         })
-        
+        output$error_f9_gt1_fwup <- renderUI({
+          if (is.na(input$FemFUAge1_dose1) | is.na(input$FemFUAge1_total)) {
+            return(NULL)
+          } else if (input$FemFUAge1_dose1 > input$FemFUAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f9_2plus_fwup <- renderUI({if (is.na(input$FemFUAge1_dose2) | is.na(input$FemFUAge1_total)) {
+          return(NULL)
+        } else if (input$FemFUAge1_dose2 > input$FemFUAge1_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_f9a_2plus_fwup <- renderUI({
+          if (is.na(input$FemFUAge1_dose2) | is.na(input$FemFUAge1_dose1)) {
+            return(NULL)
+          } else if (input$FemFUAge1_dose2 >= input$FemFUAge1_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
         
         output$MenFUAge1_dose1_rate <- renderText({
           validate(need(input$MenFUAge1_total, ""))
@@ -5132,6 +4842,37 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             return(rate)
           }
         })
+        output$error_m9_total_fwup <- renderUI({
+          if (is.na(input$MenFUAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_m9_gt1_fwup <- renderUI({
+          if (is.na(input$MenFUAge1_dose1) | is.na(input$MenFUAge1_total)) {
+            return(NULL)
+          } else if (input$MenFUAge1_dose1 > input$MenFUAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m9_2plus_fwup <- renderUI({if (is.na(input$MenFUAge1_dose2) | is.na(input$MenFUAge1_total)) {
+          return(NULL)
+        } else if (input$MenFUAge1_dose2 > input$MenFUAge1_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m9a_2plus_fwup <- renderUI({
+          if (is.na(input$MenFUAge1_dose2) | is.na(input$MenFUAge1_dose1)) {
+            return(NULL)
+          } else if (input$MenFUAge1_dose2 >= input$MenFUAge1_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        
       }
       
       # Ages 9-10, combined
@@ -5163,7 +4904,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '50%'
             ),
-            textOutput("error_9_total_fwup"),
+            uiOutput("error_9_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5181,7 +4922,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge1_dose1_rate")
             ),
-            textOutput("error_9_gt1_fwup"),
+            uiOutput("error_9_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5196,8 +4937,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge1_dose2_rate")
             ),
-            textOutput("error_9_2plus_fwup"),
-            textOutput("error_9a_2plus_fwup")
+            uiOutput("error_9_2plus_fwup"),
+            uiOutput("error_9a_2plus_fwup")
           )
         })
         output$BothFUAge1_dose1_rate <- renderText({
@@ -5228,6 +4969,38 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
             return(rate)
           }
         })
+        
+        output$error_9_total_fwup <- renderUI({
+          if (is.na(input$BothFUAge1_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_9_gt1_fwup <- renderUI({
+          if (is.na(input$BothFUAge1_dose1) | is.na(input$BothFUAge1_total)) {
+            return(NULL)
+          } else if (input$BothFUAge1_dose1 > input$BothFUAge1_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_9_2plus_fwup <- renderUI({if (is.na(input$BothFUAge1_dose2) | is.na(input$BothFUAge1_total)) {
+          return(NULL)
+        } else if (input$BothFUAge1_dose2 > input$BothFUAge1_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_9a_2plus_fwup <- renderUI({
+          if (is.na(input$BothFUAge1_dose2) | is.na(input$BothFUAge1_dose1)) {
+            return(NULL)
+          } else if (input$BothFUAge1_dose2 >= input$BothFUAge1_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        
       }
       
     }) # end the 9-10 observation
@@ -5270,7 +5043,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_f11_total_fwup"),
+            uiOutput("error_f11_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5288,7 +5061,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge2_dose1_rate")
             ),
-            textOutput("error_f11_gt1_fwup"),
+            uiOutput("error_f11_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5304,8 +5077,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge2_dose2_rate")
             ),
-            textOutput("error_f11_2plus_fwup"),
-            textOutput("error_f11a_2plus_fwup"),
+            uiOutput("error_f11_2plus_fwup"),
+            uiOutput("error_f11a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5319,7 +5092,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge2_mening_rate")
             ),
-            textOutput("error_f11_mening_fwup"),
+            uiOutput("error_f11_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5333,7 +5106,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge2_tdap_rate")
             ),
-            textOutput("error_f11_Tdap_fwup"),
+            uiOutput("error_f11_Tdap_fwup"),
           ),
           box( # boys aged 11-12
             h3("Males, ages 11-12"),
@@ -5361,7 +5134,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_m11_total_fwup"),
+            uiOutput("error_m11_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5379,7 +5152,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge2_dose1_rate")
             ),
-            textOutput("error_m11_gt1_fwup"),
+            uiOutput("error_m11_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5395,8 +5168,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge2_dose2_rate")
             ),
-            textOutput("error_m11_2plus_fwup"),
-            textOutput("error_m11a_2plus_fwup"),
+            uiOutput("error_m11_2plus_fwup"),
+            uiOutput("error_m11a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5410,7 +5183,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge2_mening_rate")
             ),
-            textOutput("error_m11_mening_fwup"),
+            uiOutput("error_m11_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5424,7 +5197,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge2_tdap_rate")
             ),
-            textOutput("error_m11_Tdap_fwup"),
+            uiOutput("error_m11_Tdap_fwup"),
           )
             )) # end split and vertical layout
         })
@@ -5481,7 +5254,52 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
         
-        
+        output$error_f11_total_fwup <- renderUI({
+          if (is.na(input$FemFUAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_f11_gt1_fwup <- renderUI({
+          if (is.na(input$FemFUAge2_dose1) | is.na(input$FemFUAge2_total)) {
+            return(NULL)
+          } else if (input$FemFUAge2_dose1 > input$FemFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_2plus_fwup <- renderUI({if (is.na(input$FemFUAge2_dose2) | is.na(input$FemFUAge2_total)) {
+          return(NULL)
+        } else if (input$FemFUAge2_dose2 > input$FemFUAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_f11a_2plus_fwup <- renderUI({
+          if (is.na(input$FemFUAge2_dose2) | is.na(input$FemFUAge2_dose1)) {
+            return(NULL)
+          } else if (input$FemFUAge2_dose2 >= input$FemFUAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_mening_fwup <- renderUI({
+          if (is.na(input$FemFUAge2_mening) | is.na(input$FemFUAge2_total)) {
+            return(NULL)
+          } else if (input$FemFUAge2_mening > input$FemFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f11_Tdap_fwup <- renderUI({
+          if (is.na(input$FemFUAge2_tdap) | is.na(input$FemFUAge2_total)) {
+            return(NULL)
+          } else if (input$FemFUAge2_tdap > input$FemFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
         
         output$MenFUAge2_dose1_rate <- renderText({
           validate(need(input$MenFUAge2_total, ""))
@@ -5535,6 +5353,53 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+
+        output$error_m11_total_fwup <- renderUI({
+          if (is.na(input$MenFUAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_m11_gt1_fwup <- renderUI({
+          if (is.na(input$MenFUAge2_dose1) | is.na(input$MenFUAge2_total)) {
+            return(NULL)
+          } else if (input$MenFUAge2_dose1 > input$MenFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_2plus_fwup <- renderUI({if (is.na(input$MenFUAge2_dose2) | is.na(input$MenFUAge2_total)) {
+          return(NULL)
+        } else if (input$MenFUAge2_dose2 > input$MenFUAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m11a_2plus_fwup <- renderUI({
+          if (is.na(input$MenFUAge2_dose2) | is.na(input$MenFUAge2_dose1)) {
+            return(NULL)
+          } else if (input$MenFUAge2_dose2 >= input$MenFUAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_mening_fwup <- renderUI({
+          if (is.na(input$MenFUAge2_mening) | is.na(input$MenFUAge2_total)) {
+            return(NULL)
+          } else if (input$MenFUAge2_mening > input$MenFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m11_Tdap_fwup <- renderUI({
+          if (is.na(input$MenFUAge2_tdap) | is.na(input$MenFUAge2_total)) {
+            return(NULL)
+          } else if (input$MenFUAge2_tdap > input$MenFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
         
       }
       # Ages 11-12 - boys and girls combined
@@ -5565,7 +5430,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_11_total_fwup"),
+            uiOutput("error_11_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5583,7 +5448,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge2_dose1_rate")
             ),
-            textOutput("error_11_gt1_fwup"),
+            uiOutput("error_11_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5599,8 +5464,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge2_dose2_rate")
             ),
-            textOutput("error_11_2plus_fwup"),
-            textOutput("error_11a_2plus_fwup"),
+            uiOutput("error_11_2plus_fwup"),
+            uiOutput("error_11a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5614,7 +5479,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge2_mening_rate")
             ),
-            textOutput("error_11_mening_fwup"),
+            uiOutput("error_11_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5628,7 +5493,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge2_tdap_rate")
             ),
-            textOutput("error_11_Tdap_fwup"),
+            uiOutput("error_11_Tdap_fwup"),
           )
         })
         output$BothFUAge2_dose1_rate <- renderText({
@@ -5670,7 +5535,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
-        output$BothFUAge2_tdap_rate <- renderText({
+        output$BothFUAge2_Tdap_rate <- renderText({
           validate(need(input$BothFUAge2_total, ""))
           if (is.na(input$BothFUAge2_tdap)) {
             return(NULL)
@@ -5683,6 +5548,54 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+        
+        output$error_11_total_fwup <- renderUI({
+          if (is.na(input$BothFUAge2_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_11_gt1_fwup <- renderUI({
+          if (is.na(input$BothFUAge2_dose1) | is.na(input$BothFUAge2_total)) {
+            return(NULL)
+          } else if (input$BothFUAge2_dose1 > input$BothFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_11_2plus_fwup <- renderUI({if (is.na(input$BothFUAge2_dose2) | is.na(input$BothFUAge2_total)) {
+          return(NULL)
+        } else if (input$BothFUAge2_dose2 > input$BothFUAge2_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_11a_2plus_fwup <- renderUI({
+          if (is.na(input$BothFUAge2_dose2) | is.na(input$BothFUAge2_dose1)) {
+            return(NULL)
+          } else if (input$BothFUAge2_dose2 >= input$BothFUAge2_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_11_mening_fwup <- renderUI({
+          if (is.na(input$BothFUAge2_mening) | is.na(input$BothFUAge2_total)) {
+            return(NULL)
+          } else if (input$BothFUAge2_mening > input$BothFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_11_Tdap_fwup <- renderUI({
+          if (is.na(input$BothFUAge2_tdap) | is.na(input$BothFUAge2_total)) {
+            return(NULL)
+          } else if (input$BothFUAge2_tdap > input$BothFUAge2_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
       }
     }) # end the 11-12 observation
     
@@ -5725,7 +5638,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_f13_total_fwup"),
+            uiOutput("error_f13_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5743,7 +5656,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge3_dose1_rate")
             ),
-            textOutput("error_f13_gt1_fwup"),
+            uiOutput("error_f13_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5759,8 +5672,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge3_dose2_rate")
             ),
-            textOutput("error_f13_2plus_fwup"),
-            textOutput("error_f13a_2plus_fwup"),
+            uiOutput("error_f13_2plus_fwup"),
+            uiOutput("error_f13a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5774,7 +5687,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge3_mening_rate")
             ),
-            textOutput("error_f13_mening_fwup"),
+            uiOutput("error_f13_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5788,7 +5701,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("FemFUAge3_tdap_rate")
             ),
-            textOutput("error_f13_Tdap_fwup"),
+            uiOutput("error_f13_Tdap_fwup"),
           ),
           box( # boys aged 13
             h3("Males, age 13"),
@@ -5816,7 +5729,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_m13_total_fwup"),
+            uiOutput("error_m13_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -5834,7 +5747,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge3_dose1_rate")
             ),
-            textOutput("error_m13_gt1_fwup"),
+            uiOutput("error_m13_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -5850,8 +5763,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge3_dose2_rate")
             ),
-            textOutput("error_m13_2plus_fwup"),
-            textOutput("error_m13a_2plus_fwup"),
+            uiOutput("error_m13_2plus_fwup"),
+            uiOutput("error_m13a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5865,7 +5778,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge3_mening_rate")
             ),
-            textOutput("error_m13_mening_fwup"),
+            uiOutput("error_m13_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -5879,7 +5792,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("MenFUAge3_tdap_rate")
             ),
-            textOutput("error_m13_Tdap_fwup"),
+            uiOutput("error_m13_Tdap_fwup"),
           )
             )) # end split and vertical layout
         })
@@ -5936,6 +5849,52 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
           }
         })
         
+        output$error_f13_total_fwup <- renderUI({
+          if (is.na(input$FemFUAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_f13_gt1_fwup <- renderUI({
+          if (is.na(input$FemFUAge3_dose1) | is.na(input$FemFUAge3_total)) {
+            return(NULL)
+          } else if (input$FemFUAge3_dose1 > input$FemFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_2plus_fwup <- renderUI({if (is.na(input$FemFUAge3_dose2) | is.na(input$FemFUAge3_total)) {
+          return(NULL)
+        } else if (input$FemFUAge3_dose2 > input$FemFUAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_f13a_2plus_fwup <- renderUI({
+          if (is.na(input$FemFUAge3_dose2) | is.na(input$FemFUAge3_dose1)) {
+            return(NULL)
+          } else if (input$FemFUAge3_dose2 >= input$FemFUAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_mening_fwup <- renderUI({
+          if (is.na(input$FemFUAge3_mening) | is.na(input$FemFUAge3_total)) {
+            return(NULL)
+          } else if (input$FemFUAge3_mening > input$FemFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_f13_Tdap_fwup <- renderUI({
+          if (is.na(input$FemFUAge3_tdap) | is.na(input$FemFUAge3_total)) {
+            return(NULL)
+          } else if (input$FemFUAge3_tdap > input$FemFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
         
         output$MenFUAge3_dose1_rate <- renderText({
           validate(need(input$MenFUAge3_total, ""))
@@ -5989,6 +5948,55 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+        
+        output$error_m13_total_fwup <- renderUI({
+          if (is.na(input$MenFUAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_m13_gt1_fwup <- renderUI({
+          if (is.na(input$MenFUAge3_dose1) | is.na(input$MenFUAge3_total)) {
+            return(NULL)
+          } else if (input$MenFUAge3_dose1 > input$MenFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_2plus_fwup <- renderUI({if (is.na(input$MenFUAge3_dose2) | is.na(input$MenFUAge3_total)) {
+          return(NULL)
+        } else if (input$MenFUAge3_dose2 > input$MenFUAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_m13a_2plus_fwup <- renderUI({
+          if (is.na(input$MenFUAge3_dose2) | is.na(input$MenFUAge3_dose1)) {
+            return(NULL)
+          } else if (input$MenFUAge3_dose2 >= input$MenFUAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_mening_fwup <- renderUI({
+          if (is.na(input$MenFUAge3_mening) | is.na(input$MenFUAge3_total)) {
+            return(NULL)
+          } else if (input$MenFUAge3_mening > input$MenFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_m13_Tdap_fwup <- renderUI({
+          if (is.na(input$MenFUAge3_tdap) | is.na(input$MenFUAge3_total)) {
+            return(NULL)
+          } else if (input$MenFUAge3_tdap > input$MenFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
+        
       }
       # Boys and girls combined - age 13
       if ("13" %in% input$Q2FU &
@@ -6018,7 +6026,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               step = 1,
               width = '100%'
             ),
-            textOutput("error_13_total_fwup"),
+            uiOutput("error_13_total_fwup"),
             h5(
               strong(
                 "Number of active patients who received at least one (1) HPV dose"
@@ -6036,7 +6044,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge3_dose1_rate")
             ),
-            textOutput("error_13_gt1_fwup"),
+            uiOutput("error_13_gt1_fwup"),
             h5(
               strong("Number of active patients who received both (2) HPV doses")
             ),
@@ -6052,8 +6060,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge3_dose2_rate")
             ),
-            textOutput("error_13_2plus_fwup"),
-            textOutput("error_13a_2plus_fwup"),
+            uiOutput("error_13_2plus_fwup"),
+            uiOutput("error_13a_2plus_fwup"),
             h5(strong("Meningococcal")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -6067,7 +6075,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge3_mening_rate")
             ),
-            textOutput("error_13_mening_fwup"),
+            uiOutput("error_13_mening_fwup"),
             h5(strong("Tdap")),
             splitLayout(
               cellWidths = c("30%", "70%"),
@@ -6081,7 +6089,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               ),
               textOutput("BothFUAge3_tdap_rate")
             ),
-            textOutput("error_13_Tdap_fwup"),
+            uiOutput("error_13_Tdap_fwup"),
           )
         })
         output$BothFUAge3_dose1_rate <- renderText({
@@ -6136,6 +6144,54 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
               paste0(rate, "% vaccination rate in this age group")
           }
         })
+        
+        output$error_13_total_fwup <- renderUI({
+          if (is.na(input$BothFUAge3_total)) {
+            helpText("This number is required", style = "color:red")
+          } else {
+            NULL
+          }
+        })
+        output$error_13_gt1_fwup <- renderUI({
+          if (is.na(input$BothFUAge3_dose1) | is.na(input$BothFUAge3_total)) {
+            return(NULL)
+          } else if (input$BothFUAge3_dose1 > input$BothFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_13_2plus_fwup <- renderUI({if (is.na(input$BothFUAge3_dose2) | is.na(input$BothFUAge3_total)) {
+          return(NULL)
+        } else if (input$BothFUAge3_dose2 > input$BothFUAge3_total) {
+          helpText("This number can't be greater than the number of patients seen",
+                   style = "color:red")
+        }
+        })
+        output$error_13a_2plus_fwup <- renderUI({
+          if (is.na(input$BothFUAge3_dose2) | is.na(input$BothFUAge3_dose1)) {
+            return(NULL)
+          } else if (input$BothFUAge3_dose2 >= input$BothFUAge3_dose1){
+            helpText("This number can't be greater than the total number of patients who received the first dose",
+                     style = "color:red")
+          }
+        })
+        output$error_13_mening_fwup <- renderUI({
+          if (is.na(input$BothFUAge3_mening) | is.na(input$BothFUAge3_total)) {
+            return(NULL)
+          } else if (input$BothFUAge3_mening > input$BothFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        output$error_13_Tdap_fwup <- renderUI({
+          if (is.na(input$BothFUAge3_tdap) | is.na(input$BothFUAge3_total)) {
+            return(NULL)
+          } else if (input$BothFUAge3_tdap > input$BothFUAge3_total) {
+            helpText("This number can't be greater than the number of patients seen",
+                     style = "color:red")
+          }
+        })
+        
       }
       
     }) # end the 13 observation
@@ -6152,679 +6208,6 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     
   }, striped = FALSE, align = "l", colnames = FALSE, rownames = FALSE, bordered =
     TRUE, spacing = "m", width = "70%")
-  
-  
-  
-  # -------------- WARNINGS ---------------- #
-  observe({
-    output$error_f9_total_fwup <- renderText({
-      validate(need(input$FemFUAge1_total, "This number is required"),
-               errorClass = "red_warnings")
-    })
-  })
-  observe({
-    output$error_f9_gt1_fwup <- renderText({
-      if (is.na(input$FemFUAge1_dose1) | is.na(input$FemFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge1_dose1 <= input$FemFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f9_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge1_dose2) | is.na(input$FemFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge1_dose2 <= input$FemFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f9a_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge1_dose2) | is.na(input$FemFUAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge1_dose2 <= input$FemFUAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  
-  
-  # Males
-  observe({
-    output$error_m9_total_fwup <- renderText({
-      validate(need(input$MenFUAge1_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m9_gt1_fwup <- renderText({
-      if (is.na(input$MenFUAge1_dose1) | is.na(input$MenFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge1_dose1 <= input$MenFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m9_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge1_dose2) | is.na(input$MenFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge1_dose2 <= input$MenFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m9a_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge1_dose2) | is.na(input$MenFUAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge1_dose2 <= input$MenFUAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Combined (males and females)
-  observe({
-    output$error_9_total_fwup <- renderText({
-      validate(need(input$BothFUAge1_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_9_gt1_fwup <- renderText({
-      if (is.na(input$BothFUAge1_dose1) | is.na(input$BothFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge1_dose1 <= input$BothFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_9_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge1_dose2) | is.na(input$BothFUAge1_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge1_dose2 <= input$BothFUAge1_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_9a_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge1_dose2) | is.na(input$BothFUAge1_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge1_dose2 <= input$BothFUAge1_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Aged 11-12 warnings ------------------------------- #
-  
-  # Females
-  observe({
-    output$error_f11_total_fwup <- renderText({
-      validate(need(input$FemFUAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the female rates
-    })
-  })
-  observe({
-    output$error_f11_gt1_fwup <- renderText({
-      if (is.na(input$FemFUAge2_dose1) | is.na(input$FemFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge2_dose1 <= input$FemFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge2_dose2) | is.na(input$FemFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge2_dose2 <= input$FemFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11a_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge2_dose2) | is.na(input$FemFUAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge2_dose2 <= input$FemFUAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_mening_fwup <- renderText({
-      if (is.na(input$FemFUAge2_mening) | is.na(input$FemFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge2_mening <= input$FemFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f11_Tdap_fwup <- renderText({
-      if (is.na(input$FemFUAge2_tdap) | is.na(input$FemFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge2_tdap <= input$FemFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Males
-  observe({
-    output$error_m11_total_fwup <- renderText({
-      validate(need(input$MenFUAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m11_gt1_fwup <- renderText({
-      if (is.na(input$MenFUAge2_dose1) | is.na(input$MenFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge2_dose1 <= input$MenFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge2_dose2) | is.na(input$MenFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge2_dose2 <= input$MenFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11a_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge2_dose2) | is.na(input$MenFUAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge2_dose2 <= input$MenFUAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_mening_fwup <- renderText({
-      if (is.na(input$MenFUAge2_mening) | is.na(input$MenFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge2_mening <= input$MenFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m11_Tdap_fwup <- renderText({
-      if (is.na(input$MenFUAge2_tdap) | is.na(input$MenFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge2_tdap <= input$MenFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  
-  
-  
-  
-  # Combined (males and females)
-  observe({
-    output$error_11_total_fwup <- renderText({
-      validate(need(input$BothFUAge2_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_11_gt1_fwup <- renderText({
-      if (is.na(input$BothFUAge2_dose1) | is.na(input$BothFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge2_dose1 <= input$BothFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge2_dose2) | is.na(input$BothFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge2_dose2 <= input$BothFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11a_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge2_dose2) | is.na(input$BothFUAge2_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge2_dose2 <= input$BothFUAge2_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_mening_fwup <- renderText({
-      if (is.na(input$BothFUAge2_mening) |
-          is.na(input$BothFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge2_mening <= input$BothFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_11_Tdap_fwup <- renderText({
-      if (is.na(input$BothFUAge2_tdap) | is.na(input$BothFUAge2_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge2_tdap <= input$BothFUAge2_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  
-  # Aged 13 warnings ------------------------------- #
-  
-  # Females
-  observe({
-    output$error_f13_total_fwup <- renderText({
-      validate(need(input$FemFUAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the female rates
-    })
-  })
-  observe({
-    output$error_f13_gt1_fwup <- renderText({
-      if (is.na(input$FemFUAge3_dose1) | is.na(input$FemFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge3_dose1 <= input$FemFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge3_dose2) | is.na(input$FemFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge3_dose2 <= input$FemFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13a_2plus_fwup <- renderText({
-      if (is.na(input$FemFUAge3_dose2) | is.na(input$FemFUAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge3_dose2 <= input$FemFUAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_mening_fwup <- renderText({
-      if (is.na(input$FemFUAge3_mening) | is.na(input$FemFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge3_mening <= input$FemFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_f13_Tdap_fwup <- renderText({
-      if (is.na(input$FemFUAge3_tdap) | is.na(input$FemFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$FemFUAge3_tdap <= input$FemFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Males
-  observe({
-    output$error_m13_total_fwup <- renderText({
-      validate(need(input$MenFUAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_m13_gt1_fwup <- renderText({
-      if (is.na(input$MenFUAge3_dose1) | is.na(input$MenFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge3_dose1 <= input$MenFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge3_dose2) | is.na(input$MenFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge3_dose2 <= input$MenFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13a_2plus_fwup <- renderText({
-      if (is.na(input$MenFUAge3_dose2) | is.na(input$MenFUAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge3_dose2 <= input$MenFUAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_mening_fwup <- renderText({
-      if (is.na(input$MenFUAge3_mening) | is.na(input$MenFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge3_mening <= input$MenFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_m13_Tdap_fwup <- renderText({
-      if (is.na(input$MenFUAge3_tdap) | is.na(input$MenFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$MenFUAge3_tdap <= input$MenFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
-  # Combined (males and females)
-  observe({
-    output$error_13_total_fwup <- renderText({
-      validate(need(input$BothFUAge3_total, "This number is required"),
-               errorClass = "red_warnings") # require responses for the male rates
-    })
-  })
-  observe({
-    output$error_13_gt1_fwup <- renderText({
-      if (is.na(input$BothFUAge3_dose1) | is.na(input$BothFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge3_dose1 <= input$BothFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge3_dose2) | is.na(input$BothFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge3_dose2 <= input$BothFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13a_2plus_fwup <- renderText({
-      if (is.na(input$BothFUAge3_dose2) | is.na(input$BothFUAge3_dose1)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge3_dose2 <= input$BothFUAge3_dose1,
-            "This number can't be greater than the total number of patients who received the first dose"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_mening_fwup <- renderText({
-      if (is.na(input$BothFUAge3_mening) |
-          is.na(input$BothFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge3_mening <= input$BothFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  observe({
-    output$error_13_Tdap_fwup <- renderText({
-      if (is.na(input$BothFUAge3_tdap) | is.na(input$BothFUAge3_total)) {
-        return(NULL)
-      } else {
-        validate(
-          need(
-            input$BothFUAge3_tdap <= input$BothFUAge3_total,
-            "This number can't be greater than the total number of patients seen"
-          ),
-          errorClass = "red_warnings"
-        )
-      }
-    })
-  })
-  
   
   
   observeEvent(input$button_fwup_rates, {
@@ -6939,7 +6322,7 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     followupRates <- data.frame(Username = session$user, fwupratesDate = as.numeric(Sys.time()),
                                 Q1FU, Q1FU_other, 
                                 Q2FU, Q2FU_1, Q2FU_2, Q2FU_3, Q2FU_4, 
-                                Q2FU_other, Q3FU, Q4FU, rates)
+                                Q2FU_other, Q3FU, Q4FU, rates, FollowupRatesComments=FollowupRatesComments)
         updateDB(DataSrc, userFilename, "followupRates", followupRates)
     updateTabsetPanel(session, "tabbox_final", selected = "p2_additional")
 
@@ -6972,6 +6355,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     
   additionalInfo <- getRecentData(DataSrc, userFilename, "additionalInfo")
   
+    AdditionalInfoComments <- additionalInfo$AdditionalInfoComments
+    
     foo7FU <- with(additionalInfo, c(Q7FU_1, Q7FU_2, Q7FU_3, Q7FU_4, Q7FU_5))
     foo7FU <- foo7FU[!is.na(foo7FU)]
     
@@ -7353,22 +6738,22 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
     Q18FU_more <- ifelse(is.null(input$Q18FU_more), "", input$Q18FU_more)
     
     
-    foo7FU <- with(additionalInfo, c(Q7FU_1, Q7FU_2, Q7FU_3, Q7FU_4, Q7FU_5))
-    foo7FU <- foo7FU[!is.na(foo7FU)]
-    
-    foo8FU <- with(additionalInfo, c(Q8FU_1, Q8FU_2, Q8FU_3))
-    foo8FU <- foo8FU[!is.na(foo8FU)]
-    
-    foo9FU <- with(additionalInfo, c(Q9FU_1, Q9FU_2, Q9FU_3, Q9FU_4,
-                                     Q9FU_5, Q9FU_6, Q9FU_7, Q9FU_8, Q9FU_9))
-    foo9FU <- foo9FU[!is.na(foo9FU)]
-    
-    foo13FU <- with(additionalInfo, c(Q13FU_1, Q13FU_2, Q13FU_3, Q13FU_4,
-                                      Q13FU_5, Q13FU_6, Q13FU_7, Q13FU_8))
-    foo13FU <- foo13FU[!is.na(foo13FU)]
-    
-    foo14FU <- with(additionalInfo, c(Q14FU_1, Q14FU_2, Q14FU_3, Q14FU_4, Q14FU_5))
-    foo14FU <- foo14FU[!is.na(foo14FU)]
+    # foo7FU <- with(additionalInfo, c(Q7FU_1, Q7FU_2, Q7FU_3, Q7FU_4, Q7FU_5))
+    # foo7FU <- foo7FU[!is.na(foo7FU)]
+    # 
+    # foo8FU <- with(additionalInfo, c(Q8FU_1, Q8FU_2, Q8FU_3))
+    # foo8FU <- foo8FU[!is.na(foo8FU)]
+    # 
+    # foo9FU <- with(additionalInfo, c(Q9FU_1, Q9FU_2, Q9FU_3, Q9FU_4,
+    #                                  Q9FU_5, Q9FU_6, Q9FU_7, Q9FU_8, Q9FU_9))
+    # foo9FU <- foo9FU[!is.na(foo9FU)]
+    # 
+    # foo13FU <- with(additionalInfo, c(Q13FU_1, Q13FU_2, Q13FU_3, Q13FU_4,
+    #                                   Q13FU_5, Q13FU_6, Q13FU_7, Q13FU_8))
+    # foo13FU <- foo13FU[!is.na(foo13FU)]
+    # 
+    # foo14FU <- with(additionalInfo, c(Q14FU_1, Q14FU_2, Q14FU_3, Q14FU_4, Q14FU_5))
+    # foo14FU <- foo14FU[!is.na(foo14FU)]
     
     
     additionalInfo <- data.frame(Username = session$user, additionalInfoDate = as.numeric(Sys.time()), Q5FU, Q5FU_text, Q6FU, Q6FU_text,
@@ -7380,7 +6765,8 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
                                  Q13FU, Q13FU_1, Q13FU_2, Q13FU_3, Q13FU_4,
                                  Q13FU_5, Q13FU_6, Q13FU_7, Q13FU_8, Q13FU_other,
                                  Q14FU, Q14FU_1, Q14FU_2, Q14FU_3, Q14FU_4, Q14FU_5, Q14FU_other,
-                                 Q15FU, Q16FU, Q17FU, Q18FU, Q18FU_more)
+                                 Q15FU, Q16FU, Q17FU, Q18FU, Q18FU_more,
+                                 AdditionalInfoComments=AdditionalInfoComments)
 
     
     
@@ -7560,7 +6946,7 @@ if (condition == 1) {
       })
       
       output$baseVacRates4 <- renderPlot({
-        figure4(df, allData, region = input$selectRegion,
+        figure4(dat = df, myData = allData, region = input$selectRegion,
                 system = input$selectSystemType)
       })
 

@@ -5,9 +5,9 @@ account: interventionsandimplementation
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 2904107
-bundleId: 3880592
+bundleId: 3963568
 url: https://interventionsandimplementation.shinyapps.io/HPV_TEST/
-when: 1605795724.03586
+when: 1607484312.05183
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: Data Dictionary.xlsx|monitoringApp.R|README.md|handsontable/.DS_Store|handsontable/mockupRates.R|handsontable/SavedRates.Rdata
+ignoredFiles: Data Dictionary.xlsx|Feedback on SHINY 11.14 version.docx|README.md|siteleveldata.R
