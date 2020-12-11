@@ -131,8 +131,8 @@ ui = dashboardPage(
         HTML("<br>"),
         helpText(
           "The Systems and Strategies Inventory (SASI) is designed to be completed by American Cancer Society (ACS) staff and the health
-                                         system partner quality improvement team for each year of HPV vaccination partnership. This tool will guide you as you assemble
-                                         a team, make a plan based on your data and previous activities, engage your system, track your progress, and measure its impact."
+           system partner quality improvement team for each year of HPV vaccination partnership. This tool will guide you as you assemble
+          a team, make a plan based on your data and previous activities, engage your system, track your progress, and measure its impact."
         ),
         HTML("<br>"),
         helpText("The Inventory contains ", strong("two sections:")),
@@ -775,6 +775,14 @@ ui = dashboardPage(
       
       # Optional data page -----------------------------
       tabItem("optional",
+              verticalLayout(
+                fluidRow(
+                  column(12, offset = 2,
+                         box(title = NULL, width = 8,
+                             h3("Remember your goals:", align = "center"),
+                             uiOutput("remembergoal3"),
+                             background = "olive"))
+                ),
               tabBox(width = NULL,
                      tabPanel(title = "Monthly data entry",
                               tags$style(type="text/css",
@@ -835,13 +843,64 @@ ui = dashboardPage(
                      
                      
                      tabPanel(title="Clinic-level data entry",
+                              tags$style(type="text/css",
+                                         ".shiny-output-error { visibility: hidden; }",
+                                         ".shiny-output-error:before { visibility: hidden; }"
+                              ),
                               h2("Clinic-level data entry"),
                               HTML("<br>"),
                               helpText("You can use this dashboard to enter clinic-level data updates and track your progress through the year."),
-                              HTML("<br>")
+                              HTML("<br>"),
                               
-                     ) # end clinic-level data entry
+                              box(width=4, align="center", background = "light-blue", solidHeader=TRUE,
+                                  verticalLayout(
+                                    
+                                    # Select Age groups
+                                    selectInput(inputId = "site_ages",
+                                                label = "What ages are you reporting?",
+                                                choices = c("9-10","11-12", "13"),
+                                                selected = NULL),
+                                    
+                                    # Select Sex
+                                    selectInput(inputId = "site_sex",
+                                                label = "sex",
+                                                choices = c("Males and females seperately",
+                                                            "Males and females combined"),
+                                                selected = "Males and females combined"),
+                                    
+                                    selectInput(inputId = "num_sites",
+                                                label = "Select number of sites or providers",
+                                                choices = paste(1:12, "Site/Provider"),
+                                                selected = "1 Site/Provider")
+                                  )), # end box
+                              
+                              box(width=8, solidHeader=TRUE,
+                                  h3("Instructions"),
+                                  tags$ol(
+                                    tags$li("Select an age group for analysis"),
+                                    tags$li("Enter your data into the table below"),
+                                    tags$li("Each row is a new site or provider.  The entire table is intended to look at data for a single period in time, for example, baseline or follow-up"),
+                                    tags$li("Fill in the table with the patient counts"),
+                                    tags$li("You may leave cells blank if data are unavailable"),
+                                    tags$li("Save the figures below to share with your partners")
+                                  )
+                              ), # end box
+                              
+                              verticalLayout(
+                                HTML("<br>"),
+                                HTML("<br>"),
+                                uiOutput("site_9_10"),
+                                uiOutput("site_11_12"),
+                                uiOutput("site_13"),
+                                actionButton("save_site", "Save data", class="success")
+                              ),
+                              helpText("Please save after entering data in each table so you 
+                                           can follow your progress throughout the year."),
+                              HTML("<br><br>"),
+                              plotOutput("allSitePlots", height = "600px")
+                     )# end clinic-level data entry
               ) # end tab box
+              ) # end vertical layout
       ), # end tab home
       
 
@@ -859,6 +918,15 @@ ui = dashboardPage(
                   monitoring under the Optional Data button in the left-hand menu."
         ),
         HTML("<br><br>"),
+        verticalLayout(
+          fluidRow(
+            column(12, offset = 2,
+                   box(title = NULL, width = 8,
+                       h3("Remember your goals:", align = "center"),
+                       uiOutput("remembergoal2"),
+                       background = "olive"))
+          ),
+          
         
         # Within the fuDashboard tabItem container, I want to define another container of tabs
         tabBox(
@@ -960,7 +1028,7 @@ ui = dashboardPage(
           ) # end of the first SASI Updates tab
           
         ) # end the tabBox container within fuDashboard
-        
+        ) # end vertical alignment
         
       ),
       # end fuDashboard tabItem
@@ -979,6 +1047,14 @@ ui = dashboardPage(
                                      See the other tabs below for updates."
         ),
         HTML("<br><br>"),
+        verticalLayout(
+          fluidRow(
+            column(12, offset = 2,
+                   box(title = NULL, width = 8,
+                       h3("Remember your goals:", align = "center"),
+                       uiOutput("remembergoal1"),
+                       background = "olive"))
+          ),
         tabBox(
           width = NULL,
           tabPanel(
@@ -1087,6 +1163,7 @@ ui = dashboardPage(
           )
           
         ) # End TabBox
+        ) # end verticalLayout
       ) # End Tab Item
       
     ) #end all tabItems listing
@@ -1110,7 +1187,7 @@ server <- function(input, output, session) {
   
   # User directory
   shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
-  shortUser <- "bcarter6"
+  #shortUser <- "bcarter6"
   # Define the endpoint and container
   # One primary containers: DataSrc
   endpoint <- storage_endpoint(
@@ -4521,8 +4598,6 @@ tags$p(Sys.Date(), style="font-size: 150%;"),
 
   ###### ------------------------------ FINAL UPDATES TABS ----------------------------- #######
   
-  
-  
   followupRates <- getRecentData(DataSrc, userFilename, "followupRates")
   
   FollowupRatesComments <- followupRates$FollowupRatesComments
@@ -6875,6 +6950,13 @@ if (condition == 1) {
   df <- getBaselineData(loc=DataSrc, filename = userFilename)
   allData <- allStudyData(loc = DataSrc)
   
+  # Add their q36f aim to the top of the dashboard
+  output$remembergoal1 <- renderUI({
+        h4(df$Q36f, align = "center")
+  })
+  
+  
+  
       # Figure 1 - all ages combined
       output$conversationCorner1 <- renderText({
         paste(
@@ -6952,6 +7034,8 @@ if (condition == 1) {
 
       
   # Baseline dashboard - tab2 - plot by site --------------------------------
+ 
+     
       
       
       output$bySiteConversationBaseline <- renderText({
@@ -6974,7 +7058,13 @@ if (condition == 1) {
   
   # Followup dashboard - tab 1 ---------------------------------------
   
-
+      df <- getAllData(loc=DataSrc, filename = userFilename)
+      
+      
+      # Add their q36f aim to the top of the dashboard
+      output$remembergoal2 <- renderUI({
+        h4(df$Q36f, align = "center")
+      })
       
       
       # Figure 1
@@ -6984,7 +7074,6 @@ if (condition == 1) {
           for the summer vaccine season, a time when you can have the most impact <br/>
           on vaccination rates!"
       })
-      df <- getAllData(loc=DataSrc, filename = userFilename)
       
       
       output$fuTable1 <- DT::renderDataTable({
@@ -7376,8 +7465,18 @@ myMonths <- c("January",
 storage_download(DataSrc, userFilename, overwrite = T)
 myDB <- dbConnect(SQLite(), userFilename)
 monthInput <- dbReadTable(myDB, "age1")
+
+# grab the most recent goal
+activities <- dbReadTable(myDB, "savedActivities")
+activities <- activities[order(activities$activitiesDate),]
+activities <- activities[nrow(activities),]
+# Add their q36f aim to the top of the dashboard
+output$remembergoal3 <- renderUI({
+  h4(activities$Q36f, align = "center")
+})
 dbDisconnect(myDB)
 rm(myDB)
+
 
 output$start_month <- renderUI({
   selectInput(inputId = "start_month",
@@ -7756,8 +7855,8 @@ observeEvent(input$save_monthly, {
     myData$age1$Dose2M <- boys1$Dose2
     
     myData$age1$TotalF <- girls1$Total
-    myData$age1$Dose1F <- girls1$Total
-    myData$age1$Dose2F <- girls1$Total
+    myData$age1$Dose1F <- girls1$Dose1
+    myData$age1$Dose2F <- girls1$Dose2
     
     
   }
@@ -7773,10 +7872,10 @@ observeEvent(input$save_monthly, {
     myData$age2$TDapM <- boys2$Tdap
     
     myData$age2$TotalF <- girls2$Total
-    myData$age2$Dose1F <- girls2$Total
-    myData$age2$Dose2F <- girls2$Total
-    myData$age2$MeningococcalF <- boys2$Meningococcal
-    myData$age2$TDapF <- boys2$Tdap
+    myData$age2$Dose1F <- girls2$Dose1
+    myData$age2$Dose2F <- girls2$Dose2
+    myData$age2$MeningococcalF <- girls2$Meningococcal
+    myData$age2$TDapF <- girls2$Tdap
     
     
   }
@@ -7792,8 +7891,8 @@ observeEvent(input$save_monthly, {
     myData$age3$TDapM <- boys3$Tdap
     
     myData$age3$TotalF <- girls3$Total
-    myData$age3$Dose1F <- girls3$Total
-    myData$age3$Dose2F <- girls3$Total
+    myData$age3$Dose1F <- girls3$Dose1
+    myData$age3$Dose2F <- girls3$Dose2
     myData$age3$MeningococcalF <- girls3$Meningococcal
     myData$age3$TDapF <- girls3$Tdap
     
@@ -7823,6 +7922,427 @@ names(dat) <- n
 rm(n)
 dbDisconnect(tempDB)
 output$allPlots <- renderPlot(threeFigures(dat))
+
+# Clinic level data -------------------------------------------------------
+# Start the site level server page
+
+
+# Start the site level server page
+
+
+
+observeEvent(list(input$site_ages, input$site_sex, input$num_sites), {
+  validate(need(input$site_ages, ""))
+  validate(need(input$site_sex, ""))
+  validate(need(input$num_sites, ""))
+  
+  storage_download(DataSrc, userFilename, overwrite = T)
+  myDB <- dbConnect(SQLite(), userFilename)
+  myData <- list()
+  myData$age1 <- dbReadTable(myDB, "siteAge1")
+  myData$age2 <- dbReadTable(myDB, "siteAge2")
+  myData$age3 <- dbReadTable(myDB, "siteAge3")
+  dbDisconnect(myDB)
+  
+  # I will need to subset these data based on input$num_sites
+  subsites <-function(ageDat) {
+    row <- match(num_sites, ageDat$Site)
+    return(ageDat[1:row,])
+  }
+  
+  
+  age <- input$site_ages
+  sex <- input$site_sex
+  num_sites <- input$num_sites
+  
+  # this little bit will make the tables disappear when unselected
+  observe({
+    x <- input$site_ages
+    if (!"9-10" %in% x) {
+      output$site_9_10 <- renderUI(NULL)
+    }
+    if (!"11-12" %in% x) {
+      output$site_11_12 <- renderUI(NULL)
+    }
+    if (!"13" %in% x) {
+      output$site_13 <- renderUI(NULL)
+    }
+  })
+  
+  
+  # Prepare the datasets
+  sitegirlsage1 <- dplyr::select(myData$age1, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F) %>% subsites()
+  sitegirlsage2 <- dplyr::select(myData$age2, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF) %>% subsites()
+  sitegirlsage3 <- dplyr::select(myData$age3, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF) %>% subsites()
+  
+  siteboysage1 <- dplyr::select(myData$age1, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M) %>% subsites()
+  siteboysage2 <- dplyr::select(myData$age2, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM) %>% subsites()
+  siteboysage3 <- dplyr::select(myData$age3, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM) %>% subsites()
+  
+  sitebothage1 <- dplyr::select(myData$age1, Site, Total, Dose1, Dose2) %>% subsites()
+  sitebothage2 <- dplyr::select(myData$age2, Site, Total, Dose1, Dose2, Meningococcal, Tdap = TDap) %>% subsites()
+  sitebothage3 <- dplyr::select(myData$age3, Site, Total, Dose1, Dose2, Meningococcal, Tdap = TDap) %>% subsites()
+  
+  
+  # Layout the UI elements dynamically
+  if (sex == "Males and females combined" & age == "9-10") {
+    output$site_9_10 <- renderUI({
+      wellPanel(
+        h4("Males and Females Combined, Ages 9-10", align = "center"),
+        fluidRow(
+          column(6, 
+                 uiOutput("siteboth_9_10")
+          ),
+          column(6, align = "center",
+                 plotOutput("siteboth_9_10_plots")
+          )))
+    })
+  }
+  if (sex == "Males and females combined" & age == "11-12") {
+    output$site_11_12 <- renderUI({
+      wellPanel(
+        h4("Males and Females Combined, Ages 11-12", align = "center"),
+        fluidRow(
+          column(6, 
+                 uiOutput("siteboth_11_12")
+          ),
+          column(6, 
+                 plotOutput("siteboth_11_12_plots")
+          )))
+    })
+  } 
+  if (sex == "Males and females combined" & age == "13") {
+    output$site_13 <- renderUI({
+      wellPanel(
+        h4("Males and Females Combined, Ages 13", align = "center"),
+        fluidRow(
+          column(6, 
+                 uiOutput("siteboth_13")
+          ),
+          column(6, 
+                 plotOutput("siteboth_13_plots")
+          )))
+    })
+  }
+  
+  if (sex == "Males and females seperately" & age == "9-10") {
+    output$site_9_10 <- renderUI({
+      wellPanel(
+        h4("Males and Females Seperately, Ages 9-10", align="center"),
+        fluidRow(
+          column(width = 6, 
+                 verticalLayout(
+                   h4("Females", align = "center"),
+                   uiOutput("sitegirls_9_10"),
+                   br(),
+                   h4("Males", align = "center"),
+                   uiOutput("siteboys_9_10")
+                 )),
+          column(width = 6,
+                 verticalLayout(
+                   br(),
+                   br(),
+                   plotOutput("siteseperate_9_10_plots", height = "650px")))))
+      
+    }) 
+  }
+  if (sex == "Males and females seperately" & age == "11-12") {
+    output$site_11_12 <- renderUI({
+      
+      wellPanel(
+        h4("Males and Females Seperately, Ages 11_12", align="center"),
+        fluidRow(
+          column(width = 6, 
+                 verticalLayout(
+                   h4("Females", align = "center"),
+                   uiOutput("sitegirls_11_12"),
+                   br(),
+                   h4("Males", align = "center"),
+                   uiOutput("siteboys_11_12")
+                 )),
+          column(width = 6,
+                 verticalLayout(
+                   br(),br(),
+                   plotOutput("siteseperate_11_12_plots", height = "650px")))))
+    }) 
+  }
+  if (sex == "Males and females seperately" & age == "13") {
+    output$site_13 <- renderUI({
+      wellPanel(
+        h4("Males and Females Seperately, Age 13", align="center"),
+        fluidRow(
+          column(width = 6, 
+                 verticalLayout(
+                   h4("Females", align = "center"),
+                   uiOutput("sitegirls_13"),
+                   br(),
+                   h4("Males", align = "center"),
+                   uiOutput("siteboys_13")
+                 )),
+          column(width = 6,
+                 verticalLayout(
+                   br(),br(),
+                   plotOutput("siteseperate_13_plots", height = "650px")))))
+    }) 
+  }
+  
+  
+  # Define the table UI
+  output$siteboth_9_10 <- renderUI({rHandsontableOutput("sitebothtable1", width = "100%")})
+  output$siteboth_11_12 <- renderUI({rHandsontableOutput("sitebothtable2", width = "100%")})
+  output$siteboth_13 <- renderUI({rHandsontableOutput("sitebothtable3", width = "100%")})
+  
+  output$sitegirls_9_10 <- renderUI({rHandsontableOutput("sitegirlstable1", width = "100%")})
+  output$sitegirls_11_12 <- renderUI({rHandsontableOutput("sitegirlstable2", width = "100%")})
+  output$sitegirls_13 <- renderUI({rHandsontableOutput("sitegirlstable3", width = "100%")})
+  
+  output$siteboys_9_10 <- renderUI({rHandsontableOutput("siteboystable1", width = "100%")})
+  output$siteboys_11_12 <- renderUI({rHandsontableOutput("siteboystable2", width = "100%")})
+  output$siteboys_13 <- renderUI({rHandsontableOutput("siteboystable3", width = "100%")})
+  
+  
+  # Render the tables
+  output$sitebothtable1 <- renderRHandsontable({
+    rhandsontable(sitebothage1, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(sitebothage1),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })   
+  output$sitebothtable2 <- renderRHandsontable({
+    rhandsontable(sitebothage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(sitebothage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$sitebothtable3 <- renderRHandsontable({
+    rhandsontable(sitebothage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(sitebothage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })  
+  
+  
+  output$sitegirlstable1 <- renderRHandsontable({
+    rhandsontable(sitegirlsage1, rowHeaders = NULL, width = "200%", stretchH = "all") %>%
+      hot_col(names(sitegirlsage1),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$sitegirlstable2 <- renderRHandsontable({
+    rhandsontable(sitegirlsage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(sitegirlsage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$sitegirlstable3 <- renderRHandsontable({
+    rhandsontable(sitegirlsage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(sitegirlsage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })     
+  
+  output$siteboystable1 <- renderRHandsontable({
+    rhandsontable(siteboysage1, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(siteboysage1),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }")
+  })      
+  output$siteboystable2 <- renderRHandsontable({
+    rhandsontable(siteboysage2, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(siteboysage2),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })      
+  output$siteboystable3 <- renderRHandsontable({
+    rhandsontable(siteboysage3, rowHeaders = NULL, width = "200%", stretchH = "all")%>%
+      hot_col(names(siteboysage3),  
+              renderer = "function(instance, td, row, col, prop, value, cellProperties) {
+               Handsontable.renderers.TextRenderer.apply(this, arguments);
+               td.style.background = 'lightblue';
+               }") 
+  })     
+  
+  # Render the figures
+  # Figures
+  if (sex == "Males and females combined") {
+    output$siteboth_9_10_plots <- renderPlot(siteFigure(hot_to_r(input$sitebothtable1)))
+    output$siteboth_11_12_plots <- renderPlot(siteFigure(hot_to_r(input$sitebothtable2)))
+    output$siteboth_13_plots <- renderPlot(siteFigure(hot_to_r(input$sitebothtable3)))
+  }
+  
+  
+  renderFigures <- function(girls, boys) {
+    grid.arrange(arrangeGrob(
+      girls + theme(legend.position = "none", title = element_text(size = 10)) + labs(title = "Females"),
+      boys + theme(legend.position = "none", title = element_text(size = 10)) + labs(title = "Males"),
+      nrow = 2, heights = c(10,10)),
+      getLegend(girls),
+      nrow=2, heights = c(20,1), 
+      top = textGrob("Vaccination rates by site or provider", gp = gpar(fontsize = 16)))
+  }
+  output$siteseperate_9_10_plots <- renderPlot({
+    girls <- siteFigure(hot_to_r(input$sitegirlstable1))
+    boys <- siteFigure(hot_to_r(input$siteboystable1))
+    renderFigures(girls, boys)
+  })
+  output$siteseperate_11_12_plots <- renderPlot({
+    girls <- siteFigure(hot_to_r(input$sitegirlstable2))
+    boys <- siteFigure(hot_to_r(input$siteboystable2))
+    renderFigures(girls, boys)
+  })
+  output$siteseperate_13_plots <- renderPlot({
+    girls <- siteFigure(hot_to_r(input$sitegirlstable3))
+    boys <- siteFigure(hot_to_r(input$siteboystable3))
+    renderFigures(girls, boys)
+  })
+  
+  
+  newData <- lapply(myData, subsites)
+  output$allSitePlots <- renderPlot(threeSiteFigures(siteDat=newData, n_rows = nrow(newData[[1]])))
+  
+  
+  
+})
+
+
+
+
+observeEvent(input$save_site, {
+  
+  storage_download(DataSrc, userFilename, overwrite = T)
+  myDB <- dbConnect(SQLite(), userFilename)
+  myData <- list()
+  myData$age1 <- dbReadTable(myDB, "siteAge1")
+  myData$age2 <- dbReadTable(myDB, "siteAge2")
+  myData$age3 <- dbReadTable(myDB, "siteAge3")
+  
+  
+  
+  age <- input$site_ages
+  sex <- input$site_sex
+  n_rows <- match(input$num_sites, myData$age1$Site)
+  
+  
+  
+  
+  if (sex == "Males and females combined" & age == "9-10") {
+    both1 <- hot_to_r(input$sitebothtable1)
+    myData$age1$Total[1:nrow(both1)] <- both1$Total
+    myData$age1$Dose1[1:nrow(both1)]   <- both1$Dose1
+    myData$age1$Dose2[1:nrow(both1)]   <- both1$Dose2
+  }
+  if (sex == "Males and females combined" & age == "11-12") {
+    both2 <- hot_to_r(input$sitebothtable2)
+    myData$age2$Total[1:nrow(both2)]  <- both2$Total
+    myData$age2$Dose1[1:nrow(both2)]  <- both2$Dose1
+    myData$age2$Dose2[1:nrow(both2)]  <- both2$Dose2
+    myData$age2$Meningococcal[1:nrow(both2)]  <- both2$Meningococcal
+    myData$age2$TDap[1:nrow(both2)]  <- both2$Tdap
+  }
+  if (sex == "Males and females combined" & age == "13") {
+    both3 <- hot_to_r(input$sitebothtable3)
+    myData$age3$Total[1:nrow(both3)]  <- both3$Total
+    myData$age3$Dose1[1:nrow(both3)] <- both3$Dose1
+    myData$age3$Dose2[1:nrow(both3)] <- both3$Dose2
+    myData$age3$Meningococcal[1:nrow(both3)] <- both3$Meningococcal
+    myData$age3$TDap[1:nrow(both3)] <- both3$Tdap
+  }
+  
+  
+  # Age 9-10
+  if (sex == "Males and females seperately" & age == "9-10") {
+    girls1 <- hot_to_r(input$sitegirlstable1)
+    boys1 <- hot_to_r(input$siteboystable1)
+    
+    myData$age1$TotalM[1:nrow(boys1)]<- boys1$Total
+    myData$age1$Dose1M[1:nrow(boys1)] <- boys1$Dose1
+    myData$age1$Dose2M[1:nrow(boys1)] <- boys1$Dose2
+    
+    myData$age1$TotalF[1:nrow(girls1)] <- girls1$Total
+    myData$age1$Dose1F[1:nrow(girls1)] <- girls1$Dose1
+    myData$age1$Dose2F[1:nrow(girls1)] <- girls1$Dose2
+    
+    
+  }
+  if (sex == "Males and females seperately" & age == "11-12") {
+    girls2 <- hot_to_r(input$sitegirlstable2)
+    boys2 <- hot_to_r(input$siteboystable2)
+    
+    
+    myData$age2$TotalM[1:nrow(boys2)] <- boys2$Total
+    myData$age2$Dose1M[1:nrow(boys2)] <- boys2$Dose1
+    myData$age2$Dose2M[1:nrow(boys2)] <- boys2$Dose2
+    myData$age2$MeningococcalM[1:nrow(boys2)] <- boys2$Meningococcal
+    myData$age2$TDapM[1:nrow(boys2)] <- boys2$Tdap
+    
+    myData$age2$TotalF[1:nrow(girls2)] <- girls2$Total
+    myData$age2$Dose1F[1:nrow(girls2)] <- girls2$Dose1
+    myData$age2$Dose2F[1:nrow(girls2)] <- girls2$Dose2
+    myData$age2$MeningococcalF[1:nrow(girls2)] <- girls2$Meningococcal
+    myData$age2$TDapF[1:nrow(girls2)] <- girls2$Tdap
+    
+    
+  }
+  if (sex == "Males and females seperately" & age == "13") {
+    girls3 <- hot_to_r(input$sitegirlstable3)
+    boys3 <- hot_to_r(input$siteboystable3)
+    
+    
+    myData$age3$TotalM[1:nrow(boys3)] <- boys3$Total
+    myData$age3$Dose1M[1:nrow(boys3)]  <- boys3$Dose1
+    myData$age3$Dose2M[1:nrow(boys3)]  <- boys3$Dose2
+    myData$age3$MeningococcalM[1:nrow(boys3)]  <- boys3$Meningococcal
+    myData$age3$TDapM[1:nrow(boys3)]  <- boys3$Tdap
+    
+    myData$age3$TotalF[1:nrow(girls3)]  <- girls3$Total
+    myData$age3$Dose1F[1:nrow(girls3)] <- girls3$Dose1
+    myData$age3$Dose2F[1:nrow(girls3)] <- girls3$Dose2
+    myData$age3$MeningococcalF[1:nrow(girls3)] <- girls3$Meningococcal
+    myData$age3$TDapF[1:nrow(girls3)] <- girls3$Tdap
+    
+  }
+  
+  # Write the database and send it back to Azure.
+  
+  
+  
+  
+  dbWriteTable(myDB, "siteAge1", myData$age1, overwrite = T)
+  dbWriteTable(myDB, "siteAge2", myData$age2, overwrite = T)
+  dbWriteTable(myDB, "siteAge3", myData$age3, overwrite = T)
+  saveAzure(DataSrc, userFilename)
+  dbDisconnect(myDB)
+  rm(myDB)
+  
+  
+  # It will refresh the allPlots when clicking save
+  output$allSitePlots <- renderPlot(threeSiteFigures(siteDat=myData, n_rows = n_rows))
+  
+  
+  
+  
+})
+
+
+
+
+
 
 
 } # end the server

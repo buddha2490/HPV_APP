@@ -413,6 +413,38 @@ firstDB <- function(loc, filename, username){
   lst$age2 <- age2
   lst$age3 <- age3
   
+  lst$siteAge1 <- data.frame(
+    Site = paste(1:12, "Site/Provider"),
+    TotalF = NA,
+    Dose1F = NA,
+    Dose2F = NA,
+    TotalM = NA,
+    Dose1M = NA,
+    Dose2M = NA,
+    Total = NA,
+    Dose1 = NA,
+    Dose2 = NA)
+  
+  lst$siteAge2 <- data.frame(
+    Site = paste(1:12, "Site/Provider"),
+    TotalF = NA,
+    Dose1F = NA,
+    Dose2F = NA,
+    MeningococcalF = NA,
+    TDapF = NA,
+    TotalM = NA,
+    Dose1M = NA,
+    Dose2M = NA,
+    MeningococcalM = NA,
+    TDapM = NA,
+    Total = NA,
+    Dose1 = NA,
+    Dose2 = NA,
+    Meningococcal = NA,
+    TDap = NA)
+  
+  lst$siteAge3 <- siteAge2
+  
   
   
   myDB <- dbConnect(RSQLite::SQLite(), filename, overwrite = T)
@@ -2293,6 +2325,201 @@ fuDisplay4 <- function(dat) {
   return(g)
 }
 
+
+
+
+# Clinic level figures ----------------------------------------------------
+
+siteFigure <- function(df) { 
+  
+  
+  foo <- names(df)
+  
+  if (!"TDap" %in% foo) {
+    dose1 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "1+ Dose HPV", N = df$Dose1)
+    dose2 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "HPV Complete", N = df$Dose2)
+    newDf <- rbind(dose1, dose2)
+    newDf$Rates <- newDf$N / newDf$Total
+    newDf$Sites <- factor(newDf$Sites,
+                          levels = df$Site,
+                          labels = sub(" Site/Provider", "", df$Site))
+    rm(dose1, dose2)
+  } else {
+    dose1 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "1+ Dose HPV", N = df$Dose1)
+    dose2 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "HPV Complete", N = df$Dose2)
+    mening <- data.frame(Sites = df$Site, Total = df$Total, Measure = "Meningococcal", N = df$Meningococcal)
+    tdap <- data.frame(Sites = df$Site, Total = df$Total, Measure = "Tdap", N = df$TDap)
+    newDf <- rbind(dose1, dose2, mening, tdap)
+    newDf$Rates <- newDf$N / newDf$Total
+    newDf$Sites <- factor(newDf$Sites,
+                          levels = df$Site,
+                          labels = sub(" Site/Provider", "", df$Site))
+    rm(dose1,dose2,mening, tdap)
+  }
+  
+  
+  
+  
+  ggplot(newDf, aes(x = Sites, y = Rates, group = Measure, color = Measure, na.rm=T)) +
+    geom_line(size = 1.25, na.rm=T) +
+    geom_point(size = 2, na.rm=T) +
+    scale_y_continuous(limits = seq(0,1),
+                       breaks = seq(0,1,0.2),
+                       labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
+    labs(title = "Vaccination rates by site or provider") +
+    xlab("Number of sites/providers in the system") + 
+    theme(legend.position = "bottom",
+          legend.title = element_blank(),
+          axis.title.y = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 14))
+  
+}
+
+threeSiteFigures <- function(siteDat, n_rows) {
+  
+  dat <- siteDat
+  
+  getLegend <- function(myggplot) {
+    tmp <- ggplot_gtable(ggplot_build(myggplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)
+  }
+  
+  dat <- lapply(dat, function(x) {
+    x[1:n_rows,]
+  })
+  
+  
+  # Sum boys and girls if 100% combined data are missing
+  if (table(is.na(dat$age1$Total)) == n_rows) {
+    dat$age1$Total = dat$age1$TotalF + dat$age1$TotalM
+    dat$age1$Dose1 = dat$age1$Dose1F + dat$age1$Dose1M
+    dat$age1$Dose2 = dat$age1$Dose2F + dat$age1$Dose2M
+  }
+  if (table(is.na(dat$age2$Total)) == n_rows) {
+    dat$age2$Total = dat$age2$TotalF + dat$age2$TotalM
+    dat$age2$Dose1 = dat$age2$Dose1F + dat$age2$Dose1M
+    dat$age2$Dose2 = dat$age2$Dose2F + dat$age2$Dose2M
+    dat$age2$Meningococcal = dat$age2$MeningococcalF + dat$age2$MeningococcalM
+    dat$age2$TDap = dat$age2$TDapF + dat$age2$TDapM
+  }
+  
+  if (table(is.na(dat$age3$Total)) == n_rows) {
+    dat$age3$Total = dat$age3$TotalF + dat$age3$TotalM
+    dat$age3$Dose1 = dat$age3$Dose1F + dat$age3$Dose1M
+    dat$age3$Dose2 = dat$age3$Dose2F + dat$age3$Dose2M
+    dat$age3$Meningococcal = dat$age3$MeningococcalF + dat$age3$MeningococcalM
+    dat$age3$TDap = dat$age3$TDapF + dat$age3$TDapM
+  }
+  
+  
+  # Just sum all the ages for the final graph
+  girls <- list(
+    age1 = dplyr::select(dat$age1, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F),
+    age2 = dplyr::select(dat$age2, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF),
+    age3 = dplyr::select(dat$age3, Site, Total = TotalF, Dose1 = Dose1F, Dose2 = Dose2F, Meningococcal = MeningococcalF, Tdap = TDapF)
+  )
+  
+  boys <- list(
+    age1 = dplyr::select(dat$age1, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M),
+    age2 = dplyr::select(dat$age2, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM),
+    age3 = dplyr::select(dat$age3, Site, Total = TotalM, Dose1 = Dose1M, Dose2 = Dose2M, Meningococcal = MeningococcalM, Tdap = TDapM)
+  )
+  
+  both <- list(
+    age1 = dplyr::select(dat$age1, Site, Total, Dose1, Dose2),
+    age2 = dplyr::select(dat$age2, Site, Total, Dose1, Dose2, Meningococcal, Tdap = TDap),
+    age3 = dplyr::select(dat$age3, Site, Total, Dose1, Dose2, Meningococcal, Tdap = TDap)
+  )
+  
+  
+  
+  lst <- girls
+  
+  
+  littleFun <- function(lst){
+    
+    
+    
+    foo <- list()
+    foo$Total <- data.frame(Site = lst$age1$Site, age1 = lst$age1$Total, age2 = lst$age2$Total, age3 = lst$age3$Total)
+    foo$Dose1 <- data.frame(Site = lst$age1$Site, age1 = lst$age1$Dose1, age2 = lst$age2$Dose1, age3 = lst$age3$Dose1)
+    foo$Dose2 <- data.frame(Site = lst$age1$Site, age1 = lst$age1$Dose2, age2 = lst$age2$Dose2, age3 = lst$age3$Dose2)
+    foo$Meningococcal <- data.frame(Site = lst$age2$Site, age2 = lst$age2$Meningococcal, age3 = lst$age3$Meningococcal)
+    foo$Tdap <- data.frame(Site = lst$age2$Site, age2 = lst$age2$Tdap, age3 = lst$age3$Tdap)
+    
+    # Sum the age groups for each vaccination 
+    foo <- lapply(names(foo), function(x) {
+      df <- foo[[x]]
+      cols <- names(df)[-1]
+      df$Sum <- apply(df[,cols], 1, sum, na.rm=T)
+      df$Sum <- ifelse(df$Sum == 0, NA, df$Sum)
+      df <- dplyr::select(df, Site, Sum)
+      names(df) <- c("Site", x)
+      return(df)
+    }) %>% 
+      Reduce(function(x,y) full_join(x,y,"Site"), .)
+    
+    # Calculate the rates
+    foo$Dose1 <- foo$Dose1 / foo$Total
+    foo$Dose2 <- foo$Dose2 / foo$Total
+    foo$Meningococcal <- foo$Meningococcal / foo$Total
+    foo$Tdap <- foo$Tdap / foo$Total
+    
+    # Restructure the data for processing
+    cols <- c("Total", "Dose1", "Dose2", "Meningococcal", "Tdap")
+    final <- lapply(cols, function(x) {
+      data.frame(Site = foo$Site, Group = x, Rate = foo[[x]])
+    }) %>% do.call("rbind",.)
+    final$Site <- factor(final$Site,  labels = as.character(1:n_rows))
+    final$Group <- factor(final$Group, 
+                          levels = cols,
+                          labels = c("Total",
+                                     "1+ Dose HPV",
+                                     "HPV Complete",
+                                     "Meningococcal",
+                                     "Tdap"))
+    
+    return(final)
+  }
+  
+  
+  allData <- lapply(list(girls,boys,both), littleFun)
+  names(allData) <- c("Females", "Males", "Males and females combined")
+  
+  
+  
+  
+  g <- lapply(names(allData), function(x) {
+    dat <- dplyr::filter(allData[[x]], Group != "Total")
+    ggplot(dat, aes(x = Site, y = Rate, group = Group, color = Group, na.rm=TRUE)) +
+      geom_line(size = 1.25, na.rm=T) +
+      geom_point(size = 2, na.rm=T) + 
+      scale_y_continuous(limits = seq(0,1),
+                         breaks = seq(0,1,0.2),
+                         labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
+      labs(title = x) +
+      xlab("Number of sites/providers in the system") +
+      
+      theme(legend.position = "bottom",
+            legend.title = element_blank(),
+            axis.title.y = element_blank(),
+            plot.title = element_text(hjust = 0.5, size =14),
+            axis.text.x = element_text(size = 8))
+  })
+  
+  
+  grid.arrange(g[[1]] + theme(legend.position = "none") + labs(title = "Females"),
+               g[[2]] + theme(legend.position = "none") + labs(title = "Males"),
+               g[[3]] + labs(title = "Males and Females Combined"),
+               nrow = 2,
+               layout_matrix= rbind(c(1,2),
+                                    c(3,3)),
+               top=textGrob("Vaccination rates by site or provider for all ages combined", 
+                            gp=gpar(fontsize=15,font=8)))
+  
+}
 
 
 
