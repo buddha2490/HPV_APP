@@ -32,7 +32,7 @@ rm(list=ls())
 
 
 # Production URLs
-logout <- "https://interventionsandimplementation.shinyapps.io/HPV_BDC/__logout__/"
+logout <- "https://interventionsandimplementation.shinyapps.io/HPV_iSASI/__logout__/"
 
 # Source files for my functions
 source("Functions.R")
@@ -873,18 +873,16 @@ ui = dashboardPage(
                                                 choices = paste(1:12, "Site/Provider"),
                                                 selected = "1 Site/Provider")
                                   )), # end box
-                              
-                              box(width=8, solidHeader=TRUE,
-                                  h3("Instructions"),
-                                  tags$ol(
-                                    tags$li("Select an age group for analysis"),
-                                    tags$li("Enter your data into the table below"),
-                                    tags$li("Each row is a new site or provider.  The entire table is intended to look at data for a single period in time, for example, baseline or follow-up"),
-                                    tags$li("Fill in the table with the patient counts"),
-                                    tags$li("You may leave cells blank if data are unavailable"),
-                                    tags$li("Save the figures below to share with your partners")
-                                  )
-                              ), # end box
+                              box(width = 8, solidHeader = TRUE,
+                                h4("Conversation Corner"),
+                                HTML("<br>"),
+                                tags$head(tags$style(
+                                  HTML("pre { white-space: pre-wrap; word-break: keep-all; }")
+                                )),
+                                htmlOutput("siteMessage"),
+                                align = "center",
+                                background = "light-blue"
+                              ),
                               
                               verticalLayout(
                                 HTML("<br>"),
@@ -895,9 +893,7 @@ ui = dashboardPage(
                                 actionButton("save_site", "Save data", class="success")
                               ),
                               helpText("Please save after entering data in each table so you 
-                                           can follow your progress throughout the year."),
-                              HTML("<br><br>"),
-                              plotOutput("allSitePlots", height = "600px")
+                                           can follow your progress throughout the year.")
                      )# end clinic-level data entry
               ) # end tab box
               ) # end vertical layout
@@ -1042,9 +1038,9 @@ ui = dashboardPage(
         HTML("<br>"),
         helpText(
           "This section is designed to help ACS staff and partners track and visualize
-                                     data collected during HPV vaccination quality improvement projects.
-                                     This version is designed for systems collecting baseline data.
-                                     See the other tabs below for updates."
+           data collected during HPV vaccination quality improvement projects.
+           This version is designed for systems collecting baseline data.
+           See the other tabs below for updates."
         ),
         HTML("<br><br>"),
         verticalLayout(
@@ -1061,8 +1057,8 @@ ui = dashboardPage(
             title = "Baseline Overview",
             h3(strong("Monitoring Charts"), align = "center"),
             helpText(
-              "These charts are based on the data you have entered for each health system.  Please
-                                     choose one of your health systems to view or all of the systems you've been monitoring combined."
+              "These charts are based on the data you have entered for your health system.  You
+               may see how your health system compares to others."
             ),
             HTML("<br>"),
             h4(strong(
@@ -7924,11 +7920,17 @@ dbDisconnect(tempDB)
 output$allPlots <- renderPlot(threeFigures(dat))
 
 # Clinic level data -------------------------------------------------------
-# Start the site level server page
 
-
-# Start the site level server page
-
+# Figure 1 - all ages combined
+output$siteMessage <- renderText({
+  paste(
+    "Select an age group and entire you data into the table below.",
+    "<br/><br/>",
+    "Are there any superstar sites?",
+    "<br/>",
+    "What are the successful sites doing differently?<br/>
+    How can other sites learn from them?")
+})
 
 
 observeEvent(list(input$site_ages, input$site_sex, input$num_sites), {
@@ -8050,7 +8052,7 @@ observeEvent(list(input$site_ages, input$site_sex, input$num_sites), {
     output$site_11_12 <- renderUI({
       
       wellPanel(
-        h4("Males and Females Seperately, Ages 11_12", align="center"),
+        h4("Males and Females Seperately, Ages 11-12", align="center"),
         fluidRow(
           column(width = 6, 
                  verticalLayout(
@@ -8214,8 +8216,7 @@ observeEvent(list(input$site_ages, input$site_sex, input$num_sites), {
   
   
   newData <- lapply(myData, subsites)
-  output$allSitePlots <- renderPlot(threeSiteFigures(siteDat=newData, n_rows = nrow(newData[[1]])))
-  
+
   
   
 })
@@ -8329,12 +8330,6 @@ observeEvent(input$save_site, {
   saveAzure(DataSrc, userFilename)
   dbDisconnect(myDB)
   rm(myDB)
-  
-  
-  # It will refresh the allPlots when clicking save
-  output$allSitePlots <- renderPlot(threeSiteFigures(siteDat=myData, n_rows = n_rows))
-  
-  
   
   
 })

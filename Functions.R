@@ -2335,42 +2335,67 @@ siteFigure <- function(df) {
   
   foo <- names(df)
   
-  if (!"TDap" %in% foo) {
+  if (!"Tdap" %in% foo) {
     dose1 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "1+ Dose HPV", N = df$Dose1)
     dose2 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "HPV Complete", N = df$Dose2)
     newDf <- rbind(dose1, dose2)
     newDf$Rates <- newDf$N / newDf$Total
     newDf$Sites <- factor(newDf$Sites,
-                          levels = df$Site,
+                          levels = df$Site, 
                           labels = sub(" Site/Provider", "", df$Site))
+    levels(newDf$Sites) <- c(paste("Site number ",levels(newDf$Sites)), "All sites combined")
     rm(dose1, dose2)
   } else {
     dose1 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "1+ Dose HPV", N = df$Dose1)
     dose2 <- data.frame(Sites = df$Site, Total = df$Total, Measure = "HPV Complete", N = df$Dose2)
     mening <- data.frame(Sites = df$Site, Total = df$Total, Measure = "Meningococcal", N = df$Meningococcal)
-    tdap <- data.frame(Sites = df$Site, Total = df$Total, Measure = "Tdap", N = df$TDap)
+    tdap <- data.frame(Sites = df$Site, Total = df$Total, Measure = "Tdap", N = df$Tdap)
     newDf <- rbind(dose1, dose2, mening, tdap)
     newDf$Rates <- newDf$N / newDf$Total
     newDf$Sites <- factor(newDf$Sites,
                           levels = df$Site,
                           labels = sub(" Site/Provider", "", df$Site))
+    levels(newDf$Sites) <- c(paste("Site number ",levels(newDf$Sites)), "All sites combined")
     rm(dose1,dose2,mening, tdap)
   }
   
+  # Sum the all rates for each vaccination
+  total <- tapply(newDf$Total, newDf$Measure, sum, na.rm=T) %>%
+    data.frame()
+  N <- tapply(newDf$N, newDf$Measure, sum, na.rm=T) %>%
+    data.frame()
+  
+  bind <- data.frame(Sites = "All sites combined", 
+                     Total = total[,1],
+                     Measure = row.names(total),
+                     N = N[,1])
+  bind$Rates <- bind$N/bind$Total
+  newDf <- rbind(newDf, bind)
+  newDf$rates_string <- (newDf$Rates * 100) %>%
+    round(1) %>%
+    format(nsmall = 1) %>%
+    paste0("%")
+
   
   
   
-  ggplot(newDf, aes(x = Sites, y = Rates, group = Measure, color = Measure, na.rm=T)) +
-    geom_line(size = 1.25, na.rm=T) +
-    geom_point(size = 2, na.rm=T) +
+  
+    g <- ggplot(newDf, aes(y = Rates,
+                           x = Measure,
+                           fill = Measure)) +
+    geom_col(width = 0.7, position = position_dodge(0.7))  +
+    geom_text(aes(label=rates_string),hjust = 0.5, vjust=-0.5, size=3 ,
+    position = position_dodge(0.7)) +
     scale_y_continuous(limits = seq(0,1),
                        breaks = seq(0,1,0.2),
                        labels = c("0", "20%", "40%", "60%", "80%", "100%")) +
+      facet_wrap(~ Sites) +
     labs(title = "Vaccination rates by site or provider") +
-    xlab("Number of sites/providers in the system") + 
     theme(legend.position = "bottom",
           legend.title = element_blank(),
           axis.title.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.title.x = element_blank(),
           plot.title = element_text(hjust = 0.5, size = 14))
   
 }

@@ -1,0 +1,12 @@
+name: HPV_iSASI
+title: HPV_iSASI
+username:
+account: interventionsandimplementation
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3412306
+bundleId: 4001445
+url: https://interventionsandimplementation.shinyapps.io/HPV_iSASI/
+when: 1608212507.85437
+asMultiple: FALSE
+asStatic: FALSE
