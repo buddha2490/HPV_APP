@@ -17,6 +17,7 @@ library(rhandsontable)
 library(dbplyr)
 library(parallel)
 library(grid)
+library(plotly)
 rm(list=ls())
 
 
@@ -1182,9 +1183,9 @@ server <- function(input, output, session) {
   inputData <- dbConnect(SQLite(), "inputData.DB")
   
   # User directory
-  shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
-  #shortUser <- "bcarter6"
-  # Define the endpoint and container
+  #shortUser <- stringr::str_replace(session$user, pattern = "[[@]].*", "")
+  shortUser <- "bcarter6"
+  ## Define the endpoint and container
   # One primary containers: DataSrc
   endpoint <- storage_endpoint(
     dbReadTable(inputData, "azureDat")$myFileshare,
