@@ -60,6 +60,7 @@ params:
   Q5FU: NA
   Q5FU_text: NA
   Q6FU: NA
+  Q6FU_text: NA
   Q7FU: NA
   Q7FU_other: NA
   Q8FU: NA 

@@ -59,12 +59,12 @@ params:
   Q26: NA
   Q26_other: NA
   
-  Q1R: NA
-  Q1R_other: NA
-  Q2R: NA
-  Q2R_other: NA
-  Q3R: NA
-  Q4R: NA
+  Q27: NA
+  Q27_other: NA
+  Q28: NA
+  Q28_other: NA
+  Q29: NA
+  Q30: NA
   FemAge1_total: NA
   FemAge1_dose1: NA
   FemAge1_dose2: NA      
@@ -104,31 +104,30 @@ params:
   BothAge3_dose2: NA
   BothAge3_mening: NA
   BothAge3_tdap: NA
-  Q5R: NA
-  Q5R_other: NA
-  Q6R: NA  
-  Q6R_details: NA
-  Q6R_other: NA
-  Q7R: NA
-  Q7R_other: NA      
-  Q8R: NA
-  
-  Q9R: NA
-  Q9R_other: NA
-  Q10aR: NA
-  Q10bR: NA
-  Q10cR: NA
-  Q10dR: NA
-  Q10eR: NA
-  Q10fR: NA
-  Q11R: NA
-  Q12R: NA
-  Q12R_other: NA
-  Q13R: NA
-  Q13R_other: NA
-  Q14R: NA
-  Q15R: NA
-  Q16R: NA
+  Q31: NA
+  Q31_other: NA
+  Q32: NA
+  Q32_details: NA
+  Q32_other: NA
+  Q33: NA
+  Q33_other: NA
+  Q34: NA
+  Q35: NA
+  Q35_other: NA
+  Q36a: NA
+  Q36b: NA
+  Q36c: NA
+  Q36d : NA
+  Q36e: NA
+  Q36f: NA
+  Q37: NA
+  Q38: NA
+  Q38_other: NA
+  Q39: NA
+  Q39_other: NA
+  Q40: NA
+  Q41: NA
+  Q42: NA
   act1: NA
   act2: NA
   act3: NA
